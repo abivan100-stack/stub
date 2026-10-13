@@ -1,0 +1,290 @@
+/* Stub design tokens.
+   Card stock and print ink. One signal colour (safety orange) for the primary action and live progress.
+   Structure comes from rules and perforations, never from shadows. */
+
+@font-face {
+  font-family: 'Archivo';
+  src: url('./assets/fonts/archivo-wdth.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'DM Mono';
+  src: url('./assets/fonts/dm-mono-400.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'DM Mono';
+  src: url('./assets/fonts/dm-mono-500.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+}
+
+:root {
+  --page: #e6e3da; /* the desk the tickets sit on */
+  --slip: #f4f2ec; /* ticket card stock */
+  --ink: #1b1a17;
+  --ink-2: #57544c; /* secondary text, 5.9:1 on page */
+  --rule: #1b1a17;
+  --rule-soft: #b9b5aa;
+  --signal: #ff5b14; /* safety orange; ink text on it is 5.7:1 */
+  --on-signal: #1b1a17;
+  --stamp: #b83a08; /* 4.8:1 on slip */
+  --danger: #a3200f;
+  --qr-light: #f4f2ec;
+  --qr-dark: #1b1a17;
+
+  --display: 'Archivo', 'Arial Narrow', sans-serif;
+  --body: 'Archivo', system-ui, sans-serif;
+  --mono: 'DM Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  /* Type scale: 1.25 ratio from a 17px body */
+  --t-xs: 0.8125rem;
+  --t-sm: 0.9375rem;
+  --t-md: 1.0625rem;
+  --t-lg: 1.375rem;
+  --t-xl: 2rem;
+  --t-2xl: clamp(2.75rem, 9vw, 4.5rem);
+  --t-3xl: clamp(4.5rem, 19vw, 9.5rem);
+
+  /* 4px base grid */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+  --s8: 72px;
+
+  --line: 1.5px;
+  --radius: 3px;
+  --tap: 52px;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #191a18;
+    --slip: #232421;
+    --ink: #e9e5db;
+    --ink-2: #a8a499;
+    --rule: #e9e5db;
+    --rule-soft: #4a4a45;
+    --signal: #ff6a2b;
+    --on-signal: #191a18;
+    --stamp: #ff8a50;
+    --danger: #ff8a7a;
+    color-scheme: dark;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  font-size: 106.25%; /* 17px */
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: var(--t-md);
+  line-height: 1.45;
+  font-stretch: 100%;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--display);
+  font-stretch: 68%;
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+p {
+  margin: 0;
+  max-width: 60ch;
+}
+
+.mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.quiet {
+  color: var(--ink-2);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+
+/* Buttons: physical keys. They sit on a hard offset edge and press down into it. */
+.btn {
+  --edge: var(--rule);
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  min-height: var(--tap);
+  padding: 0 var(--s5);
+  border: var(--line) solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--slip);
+  color: var(--ink);
+  font: 650 var(--t-md) / 1 var(--body);
+  font-stretch: 90%;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--edge);
+  transform: translateY(0);
+  transition: transform 60ms linear, box-shadow 60ms linear;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 var(--edge);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.btn.go {
+  background: var(--signal);
+  color: var(--on-signal);
+}
+.btn.small {
+  min-height: 40px;
+  padding: 0 var(--s4);
+  font-size: var(--t-sm);
+  box-shadow: 0 2px 0 var(--edge);
+}
+.btn.small:active:not(:disabled) {
+  transform: translateY(2px);
+}
+.btn.wide {
+  width: 100%;
+}
+
+.link {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: var(--s2) 0;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--t-sm);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* The slip: a piece of card stock with a ruled edge. */
+.slip {
+  background: var(--slip);
+  border: var(--line) solid var(--rule);
+  border-radius: var(--radius);
+}
+
+/* Perforation: a dotted tear line with punched notches at each end.
+   Use .perf for a horizontal tear, .perf.v for a vertical one. */
+.perf {
+  position: relative;
+  height: 0;
+  border-top: 2px dotted var(--rule-soft);
+  margin: 0 calc(var(--line) * -1);
+}
+.perf::before,
+.perf::after {
+  content: '';
+  position: absolute;
+  top: -11px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--page);
+  border: var(--line) solid var(--rule);
+}
+.perf::before {
+  left: -10px;
+  clip-path: inset(0 0 0 50%);
+}
+.perf::after {
+  right: -10px;
+  clip-path: inset(0 50% 0 0);
+}
+.perf.v {
+  height: auto;
+  width: 0;
+  border-top: 0;
+  border-left: 2px dotted var(--rule-soft);
+  margin: calc(var(--line) * -1) 0;
+}
+.perf.v::before,
+.perf.v::after {
+  top: auto;
+  left: -11px;
+  right: auto;
+}
+.perf.v::before {
+  top: -10px;
+  clip-path: inset(50% 0 0 0);
+}
+.perf.v::after {
+  bottom: -10px;
+  clip-path: inset(0 0 50% 0);
+}
+
+textarea,
+input[type='text'] {
+  width: 100%;
+  padding: var(--s3);
+  border: var(--line) solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--page);
+  color: var(--ink);
+  font: var(--t-xs) / 1.4 var(--mono);
+  word-break: break-all;
+  resize: vertical;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

@@ -1,0 +1,4 @@
+export { Peer, FINISHED } from './peer'
+export type { Ticket, Status, Direction, IncomingBatch } from './peer'
+export { memorySink, folderSink, canStreamToDisk, MEMORY_LIMIT } from './sink'
+export type { SinkFactory } from './sink'
