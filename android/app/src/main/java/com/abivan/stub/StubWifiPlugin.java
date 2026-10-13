@@ -10,6 +10,8 @@ import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiNetworkSpecifier;
+import android.net.wifi.p2p.WifiP2pGroup;
+import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -42,6 +44,9 @@ public class StubWifiPlugin extends Plugin {
     private static final int JOIN_TIMEOUT_MS = 30_000;
 
     private WifiManager.LocalOnlyHotspotReservation hotspot;
+    private WifiP2pManager p2p;
+    private WifiP2pManager.Channel p2pChannel;
+    private boolean ownsGroup = false;
     private ConnectivityManager.NetworkCallback joined;
 
     private String alias() {
@@ -147,6 +152,96 @@ public class StubWifiPlugin extends Plugin {
         }
     }
 
+    // --- Wi-Fi Direct group (fallback when a local-only hotspot won't start) ----------------------
+
+    @PluginMethod
+    public void startDirectGroup(PluginCall call) {
+        if (getPermissionState(alias()) != PermissionState.GRANTED) {
+            requestPermissionForAlias(alias(), call, "afterDirectPermission");
+            return;
+        }
+        doStartDirectGroup(call);
+    }
+
+    @PermissionCallback
+    private void afterDirectPermission(PluginCall call) {
+        if (getPermissionState(alias()) == PermissionState.GRANTED) doStartDirectGroup(call);
+        else call.reject("Stub needs the \"Nearby devices\" permission to use Wi-Fi Direct");
+    }
+
+    @SuppressWarnings("MissingPermission") // checked above through the plugin's permission alias
+    private void doStartDirectGroup(PluginCall call) {
+        if (p2p == null) {
+            p2p = (WifiP2pManager) getContext().getSystemService(Context.WIFI_P2P_SERVICE);
+            if (p2p == null) {
+                call.reject("This phone doesn't support Wi-Fi Direct");
+                return;
+            }
+            p2pChannel = p2p.initialize(getContext(), Looper.getMainLooper(), null);
+        }
+        // Drop any old group first; createGroup fails with BUSY while one exists.
+        p2p.removeGroup(p2pChannel, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                create(call);
+            }
+
+            @Override
+            public void onFailure(int reason) {
+                create(call);
+            }
+        });
+    }
+
+    @SuppressWarnings("MissingPermission")
+    private void create(PluginCall call) {
+        p2p.createGroup(p2pChannel, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                ownsGroup = true;
+                readGroup(call, 0);
+            }
+
+            @Override
+            public void onFailure(int reason) {
+                call.reject(reason == WifiP2pManager.P2P_UNSUPPORTED
+                    ? "This phone doesn't support Wi-Fi Direct"
+                    : "Wi-Fi Direct didn't start. Make sure Wi-Fi is on, then try again");
+            }
+        });
+    }
+
+    /** The group's name and password show up a moment after it starts, so poll briefly. */
+    @SuppressWarnings("MissingPermission")
+    private void readGroup(PluginCall call, int attempt) {
+        p2p.requestGroupInfo(p2pChannel, (WifiP2pGroup g) -> {
+            if (g != null && g.getNetworkName() != null && g.getPassphrase() != null) {
+                JSObject o = new JSObject();
+                o.put("ssid", g.getNetworkName());
+                o.put("password", g.getPassphrase());
+                o.put("security", "WPA");
+                call.resolve(o);
+            } else if (attempt < 20) {
+                new Handler(Looper.getMainLooper()).postDelayed(() -> readGroup(call, attempt + 1), 250);
+            } else {
+                call.reject("Wi-Fi Direct started but didn't report its network name");
+            }
+        });
+    }
+
+    @PluginMethod
+    public void stopDirectGroup(PluginCall call) {
+        stopDirectQuietly();
+        call.resolve();
+    }
+
+    private void stopDirectQuietly() {
+        if (p2p != null && ownsGroup) {
+            p2p.removeGroup(p2pChannel, null);
+            ownsGroup = false;
+        }
+    }
+
     // --- join ------------------------------------------------------------------------------
 
     @PluginMethod
@@ -237,6 +332,7 @@ public class StubWifiPlugin extends Plugin {
     @Override
     protected void handleOnDestroy() {
         stopHotspotQuietly();
+        stopDirectQuietly();
         leaveQuietly();
     }
 
