@@ -4,9 +4,20 @@ import { verificationCode } from './code'
 export type PairingFailure = 'bad-code' | 'wrong-step' | 'timeout' | 'network' | 'unsupported'
 
 export class PairingError extends Error {
+  /** For connection failures: which addresses each side offered, shown on the error screen. */
+  detail?: string
+
   constructor(public kind: PairingFailure) {
     super(kind)
   }
+}
+
+/** "192.168.43.12 (udp), 3f2a…local (udp)" from an SDP's host candidates. */
+export function candidateList(sdp: string | undefined): string {
+  const found = [...(sdp ?? '').matchAll(/^a=candidate:\S+ \d+ (\w+) \d+ (\S+) \d+ typ (\w+)/gm)].map(
+    ([, proto, addr]) => `${addr!.endsWith('.local') ? addr!.slice(0, 8) + '…local' : addr} (${proto!.toLowerCase()})`,
+  )
+  return found.join(', ') || 'none'
 }
 
 /** What the rest of the app gets once two devices are linked. A native transport can return the same shape. */
@@ -44,6 +55,11 @@ function gathered(pc: RTCPeerConnection): Promise<void> {
 function opened(pc: RTCPeerConnection, channel: Promise<RTCDataChannel>): Promise<Link> {
   return new Promise((resolve, reject) => {
     const fail = (e: PairingError) => {
+      e.detail = [
+        `This device: ${candidateList(pc.localDescription?.sdp)}`,
+        `Other device: ${candidateList(pc.remoteDescription?.sdp)}`,
+        `Connection state: ${pc.iceConnectionState}`,
+      ].join('\n')
       clearTimeout(timer)
       pc.close()
       reject(e)

@@ -21,6 +21,10 @@ export const PROBLEMS: Record<ProblemKind, { title: string; fix: string }> = {
   },
 }
 
+export function detailOf(e: unknown): string {
+  return e instanceof PairingError ? (e.detail ?? '') : ''
+}
+
 export function failureOf(e: unknown): PairingFailure {
   return e instanceof PairingError ? e.kind : 'network'
 }

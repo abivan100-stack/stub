@@ -109,3 +109,13 @@ describe('verification code', () => {
     expect(await verificationCode(OFFER, answer)).not.toBe(await verificationCode(OFFER, OFFER.replace(/5B:9C/, 'CC:DD')))
   })
 })
+
+describe('connection details', () => {
+  it('lists each side’s addresses for the error screen', async () => {
+    const { candidateList } = await import('../src/pairing/session')
+    expect(candidateList(OFFER)).toBe(
+      '192.168.43.12 (udp), 192.168.43.12 (tcp), 10.0.0.5 (udp), 2001:db8::1:ab (udp), 3f2a8c41…local (udp)',
+    )
+    expect(candidateList(undefined)).toBe('none')
+  })
+})

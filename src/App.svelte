@@ -17,6 +17,7 @@
   let link = $state.raw<Link | null>(null)
   let peer = $state.raw<Peer | null>(null)
   let problem = $state<ProblemKind>('network')
+  let problemDetail = $state('')
   // In the Android app every file ships inside the APK, so it is offline from the first launch.
   const native = Capacitor.isNativePlatform()
   let offlineReady = $state(native || !!navigator.serviceWorker?.controller)
@@ -39,7 +40,8 @@
     view = 'verify'
   }
 
-  function fail(kind: ProblemKind) {
+  function fail(kind: ProblemKind, detail = '') {
+    problemDetail = detail
     disconnect()
     problem = kind
     view = 'problem'
@@ -81,5 +83,5 @@
 {:else if view === 'transfer' && peer && link}
   <Transfer {peer} code={link.code} {shared} ontookshared={() => (shared = [])} onleave={home} />
 {:else if view === 'problem'}
-  <Problem kind={problem} onhome={home} />
+  <Problem kind={problem} detail={problemDetail} onhome={home} />
 {/if}

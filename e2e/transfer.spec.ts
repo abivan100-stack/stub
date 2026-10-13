@@ -102,3 +102,25 @@ test('a Wi-Fi code from a hotspot shows join-by-hand details on the web', async 
   // The scanner is ready again for the Stub code.
   await expect(page.getByText(/Can’t scan\? Paste their code/)).toBeVisible()
 })
+
+test('when the other device is unreachable, the error screen shows connection details', async ({ browser }) => {
+  const opts = { permissions: ['camera'] }
+  const alice = await (await browser.newContext(opts)).newPage()
+  const bob = await (await browser.newContext(opts)).newPage()
+  await alice.goto('/')
+  await alice.getByRole('button', { name: /^Send/ }).click()
+  const offer = await copyCode(alice)
+  await alice.close() // the sender disappears before the receiver answers
+
+  await bob.goto('/')
+  await bob.getByRole('button', { name: /^Receive/ }).click()
+  await pasteCode(bob, offer)
+  // Either the 20-second timeout or an outright ICE failure, depending on how fast the browser gives up.
+  await expect(bob.getByRole('heading', { name: /Couldn’t reach the other device|The connection failed/ })).toBeVisible({
+    timeout: 30_000,
+  })
+  await bob.getByText('Details for troubleshooting').click()
+  await expect(bob.getByText(/This device: .*\(udp\)/)).toBeVisible()
+  await expect(bob.getByText(/Other device: .*\(udp\)/)).toBeVisible()
+  await shot(bob, 'error-details')
+})

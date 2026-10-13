@@ -12,12 +12,12 @@
     type Offer,
     type WifiCredentials,
   } from '../pairing'
-  import { failureOf, inlineProblem, type ProblemKind } from './problems'
+  import { detailOf, failureOf, inlineProblem, type ProblemKind } from './problems'
   import Bar from './Bar.svelte'
   import QrCode from './QrCode.svelte'
   import Scanner from './Scanner.svelte'
 
-  let { onlink, onfail, onback }: { onlink: (l: Link) => void; onfail: (k: ProblemKind) => void; onback: () => void } =
+  let { onlink, onfail, onback }: { onlink: (l: Link) => void; onfail: (k: ProblemKind, detail?: string) => void; onback: () => void } =
     $props()
 
   // Normal: show code, scan reply. With a hotspot (Android app): show Wi-Fi code first.
@@ -43,7 +43,7 @@
     offer = null
     createOffer()
       .then((o) => (live ? (offer = o) : o.cancel()))
-      .catch((e) => onfail(failureOf(e) as ProblemKind))
+      .catch((e) => onfail(failureOf(e) as ProblemKind, detailOf(e)))
   }
 
   $effect(() => {
@@ -101,7 +101,7 @@
     } catch (e) {
       const kind = failureOf(e)
       problem = inlineProblem(kind, 'answer')
-      if (!problem) return onfail(kind as ProblemKind)
+      if (!problem) return onfail(kind as ProblemKind, detailOf(e))
       connecting = false
       attempt++
     }

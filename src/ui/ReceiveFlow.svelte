@@ -5,18 +5,19 @@
     nfcStatus,
     parseWifiQr,
     readByNfc,
+    unlockLocalAddresses,
     stopWifi,
     wifiCapabilities,
     type Answer,
     type Link,
     type WifiCredentials,
   } from '../pairing'
-  import { failureOf, inlineProblem, type ProblemKind } from './problems'
+  import { detailOf, failureOf, inlineProblem, type ProblemKind } from './problems'
   import Bar from './Bar.svelte'
   import QrCode from './QrCode.svelte'
   import Scanner from './Scanner.svelte'
 
-  let { onlink, onfail, onback }: { onlink: (l: Link) => void; onfail: (k: ProblemKind) => void; onback: () => void } =
+  let { onlink, onfail, onback }: { onlink: (l: Link) => void; onfail: (k: ProblemKind, detail?: string) => void; onback: () => void } =
     $props()
 
   let answer = $state<Answer | null>(null)
@@ -58,6 +59,9 @@
     if (wifi) return useWifi(wifi)
     reading = 'Reading code'
     try {
+      // With camera permission, the reply carries real LAN addresses instead of ".local" names
+      // (matters when the code was pasted rather than scanned).
+      await unlockLocalAddresses()
       const a = await acceptOffer(text)
       if (gone) return a.cancel()
       answer = a
@@ -66,12 +70,12 @@
           linked = true
           onlink(l)
         },
-        (e) => !gone && onfail(failureOf(e) as ProblemKind),
+        (e) => !gone && onfail(failureOf(e) as ProblemKind, detailOf(e)),
       )
     } catch (e) {
       const kind = failureOf(e)
       problem = inlineProblem(kind, 'offer')
-      if (!problem) return onfail(kind as ProblemKind)
+      if (!problem) return onfail(kind as ProblemKind, detailOf(e))
       attempt++
     } finally {
       reading = null

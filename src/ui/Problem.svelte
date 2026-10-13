@@ -2,7 +2,7 @@
   import Bar from './Bar.svelte'
   import { PROBLEMS, type ProblemKind } from './problems'
 
-  let { kind, onhome }: { kind: ProblemKind; onhome: () => void } = $props()
+  let { kind, detail = '', onhome }: { kind: ProblemKind; detail?: string; onhome: () => void } = $props()
   const p = $derived(PROBLEMS[kind])
 </script>
 
@@ -14,6 +14,12 @@
     <h1>{p.title}</h1>
     <p>{p.fix}</p>
   </div>
+  {#if detail}
+    <details class="detail">
+      <summary>Details for troubleshooting</summary>
+      <pre class="mono">{detail}</pre>
+    </details>
+  {/if}
   <button class="btn go wide" onclick={onhome}>Start again</button>
 </main>
 
@@ -32,6 +38,17 @@
     gap: var(--s4);
     padding: var(--s6) var(--s5);
     overflow: hidden;
+  }
+.detail summary {
+    cursor: pointer;
+    font-size: var(--t-sm);
+    color: var(--ink-2);
+  }
+  .detail pre {
+    margin: var(--s2) 0 0;
+    font-size: var(--t-xs);
+    white-space: pre-wrap;
+    word-break: break-all;
   }
   h1 {
     font-size: var(--t-xl);
