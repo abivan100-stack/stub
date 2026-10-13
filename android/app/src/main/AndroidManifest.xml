@@ -36,6 +36,19 @@
 
         </activity>
 
+        <!-- Tap-to-pair: this phone poses as an NFC tag holding the pairing code; see StubTagService.java -->
+        <service
+            android:name=".StubTagService"
+            android:exported="true"
+            android:permission="android.permission.BIND_NFC_SERVICE">
+            <intent-filter>
+                <action android:name="android.nfc.cardemulation.action.HOST_APDU_SERVICE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.nfc.cardemulation.host_apdu_service"
+                android:resource="@xml/stub_tag" />
+        </service>
+
         <!-- Keeps transfers going in the background; see TransferService.java -->
         <service
             android:name=".TransferService"
@@ -75,4 +88,8 @@
     <!-- Android 8 to 12 only: the same Wi-Fi features need location there -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="32" />
+    <!-- Tap-to-pair over NFC; phones without NFC can still install Stub -->
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
+    <uses-feature android:name="android.hardware.nfc.hce" android:required="false" />
 </manifest>

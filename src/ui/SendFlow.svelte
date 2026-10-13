@@ -1,6 +1,8 @@
 <script lang="ts">
   import {
     createOffer,
+    nfcStatus,
+    shareByNfc,
     startHotspot,
     stopWifi,
     toWifiQr,
@@ -22,6 +24,7 @@
   let stage = $state<'wifi' | 'offer' | 'scan'>('offer')
   let hotspot = $state<WifiCredentials | null>(null)
   let canHotspot = $state(false)
+  let nfcOn = $state(false)
   let startingHotspot = $state(false)
   let hotspotProblem = $state<string | null>(null)
   let offer = $state<Offer | null>(null)
@@ -45,6 +48,7 @@
 
   $effect(() => {
     wifiCapabilities().then((c) => (canHotspot = c.hotspot))
+    nfcStatus().then((s) => (nfcOn = s.share && s.enabled))
     unlockLocalAddresses().then(() => live && makeOffer())
     return () => {
       live = false
@@ -60,8 +64,7 @@
     hotspotProblem = null
     try {
       hotspot = await startHotspot()
-      offer?.cancel() // made before the hotspot existed, so it lacks the hotspot's address
-      offer = null
+      makeOffer() // the old one was made before the hotspot existed, so it lacks the hotspot's address
       stage = 'wifi'
     } catch (e) {
       hotspotProblem = e instanceof Error ? e.message : String(e)
@@ -71,9 +74,15 @@
   }
 
   function joined() {
-    makeOffer()
     stage = 'offer'
   }
+
+  // Tap-to-pair: while a code is on screen, a phone that taps this one gets it (with the Wi-Fi details first).
+  $effect(() => {
+    if (!nfcOn || stage === 'scan' || !offer) return
+    shareByNfc(hotspot ? [toWifiQr(hotspot), offer.payload] : [offer.payload])
+    return () => shareByNfc([])
+  })
 
   function back() {
     if (connecting) return onback()
@@ -116,6 +125,10 @@
         <dd>{hotspot.password || 'none'}</dd>
       </dl>
     </div>
+    {#if nfcOn}
+      <p class="nfc quiet">Or hold the phones back to back to send the Wi-Fi and the code in one tap.</p>
+      <button class="link" disabled={!offer} onclick={() => (stage = 'scan')}>Tapped phones? Scan their reply</button>
+    {/if}
     <button class="btn go wide next" onclick={joined}>They joined. Next</button>
   {:else if stage === 'offer'}
     <div class="copy">
@@ -129,6 +142,7 @@
         <p class="wait mono" role="status">Making your code</p>
       {/if}
     </div>
+    {#if nfcOn}<p class="nfc quiet">Or hold the phones back to back.</p>{/if}
     {#if canHotspot && !hotspot}
       <div class="alt">
         <button class="link" disabled={startingHotspot} onclick={makeHotspot}>
@@ -214,6 +228,10 @@
   .creds dd {
     margin: 0;
     word-break: break-all;
+  }
+  .nfc {
+    font-size: var(--t-sm);
+    text-align: center;
   }
   .alt .problem {
     margin-top: var(--s2);

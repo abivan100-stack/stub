@@ -125,6 +125,14 @@ Stub appears in Android's share sheet for any file type ([`StubSharePlugin.java`
 
 No shared Wi-Fi? On the Send screen, the Android app offers "Make a hotspot" ([`StubWifiPlugin.java`](android/app/src/main/java/com/abivan/stub/StubWifiPlugin.java)). It starts a local-only hotspot (no internet, mobile data untouched) and shows a standard Wi-Fi QR code. The other phone joins it by scanning with Stub (Android 10+ joins automatically after a system prompt) or with its camera app; the web version shows the name and password to join by hand. The pairing codes are made after the hotspot is up, so they carry its address. Android 8+ is needed to make a hotspot; Android 13+ asks for "Nearby devices", older versions ask for location. If the phone won't start a local-only hotspot (its regular hotspot is on, no free channel, or a carrier block), Stub creates a Wi-Fi Direct group instead and shows that in the same Wi-Fi QR code.
 
+With NFC switched on, phones can pair by tapping instead of scanning the first code. The sending phone poses as an NFC tag that holds its code, plus the Wi-Fi details when it made a hotspot ([`StubTagService.java`](android/app/src/main/java/com/abivan/stub/StubTagService.java)), and the receiving phone reads it ([`StubNfcPlugin.java`](android/app/src/main/java/com/abivan/stub/StubNfcPlugin.java)). The reply still goes back by QR code. Some phones only answer NFC reads while unlocked.
+
+Android unit tests (JVM, no device needed):
+
+```bash
+cd android && ./gradlew testDebugUnitTest
+```
+
 If Gradle or `sdkmanager` fails with an SSL error behind antivirus HTTPS scanning, set `JAVA_TOOL_OPTIONS=-Djavax.net.ssl.trustStoreType=Windows-ROOT` so Java uses the Windows certificate store.
 
 ## Known limits

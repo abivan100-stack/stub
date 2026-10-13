@@ -2,7 +2,9 @@
   import {
     acceptOffer,
     joinWifi,
+    nfcStatus,
     parseWifiQr,
+    readByNfc,
     stopWifi,
     wifiCapabilities,
     type Answer,
@@ -24,8 +26,23 @@
   // The sender made a hotspot: we joined it (Android app), or the user has to join it by hand (web).
   let joined = $state<string | null>(null)
   let joinByHand = $state<WifiCredentials | null>(null)
+  let nfcOn = $state(false)
   let linked = false
   let gone = false
+
+  nfcStatus().then((s) => (nfcOn = s.read && s.enabled))
+
+  // Tap-to-pair: the sender's tag holds the Wi-Fi details (if it made a hotspot), then its code.
+  $effect(() => {
+    if (!nfcOn || answer) return
+    return readByNfc(async (records) => {
+      if (reading) return
+      for (const r of records) {
+        await scanned(r)
+        if (answer || problem) break
+      }
+    })
+  })
 
   $effect(() => () => {
     gone = true
@@ -90,6 +107,7 @@
       <h1>Scan their code</h1>
       <p class="quiet">
         {joined ? `Joined ${joined}. Now scan their Stub code.` : 'Point at the screen that tapped Send.'}
+        {#if nfcOn}Or hold the phones back to back.{/if}
       </p>
     </div>
     {#if joinByHand}

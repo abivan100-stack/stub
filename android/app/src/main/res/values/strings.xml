@@ -4,4 +4,5 @@
     <string name="title_activity_main">Stub</string>
     <string name="package_name">com.abivan.stub</string>
     <string name="custom_url_scheme">com.abivan.stub</string>
+    <string name="nfc_tag_description">Stub pairing code</string>
 </resources>
