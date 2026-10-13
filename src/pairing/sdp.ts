@@ -166,11 +166,50 @@ export async function encodeDescription(desc: RTCSessionDescriptionInit): Promis
   return (desc.type === 'offer' ? 'o' : 'a') + toBase64Url(pack(readFields(desc.sdp ?? '')))
 }
 
+// QR form: the same bytes in base32 behind an uppercase type letter ("O" / "A").
+// Every character is in QR's alphanumeric set, which packs 5.5 bits per character
+// instead of byte mode's 8, so the code has fewer, larger squares and scans more easily.
+const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+
+export function toBase32(bytes: Uint8Array): string {
+  let out = ''
+  let bits = 0
+  let value = 0
+  for (const b of bytes) {
+    value = (value << 8) | b
+    bits += 8
+    while (bits >= 5) out += B32[(value >>> (bits -= 5)) & 31]
+  }
+  if (bits) out += B32[(value << (5 - bits)) & 31]
+  return out
+}
+
+export function fromBase32(text: string): Uint8Array {
+  const out: number[] = []
+  let bits = 0
+  let value = 0
+  for (const c of text.toUpperCase()) {
+    const v = B32.indexOf(c)
+    if (v < 0) throw new Error('Not base32')
+    value = ((value << 5) | v) & 0xffff
+    bits += 5
+    if (bits >= 8) out.push((value >>> (bits -= 8)) & 0xff)
+  }
+  return Uint8Array.from(out)
+}
+
+/** "oAbc…" (text form) to "OMFRG…" (QR form). Anything else is returned unchanged. */
+export function toQrForm(payload: string): string {
+  if (!/^[oa][A-Za-z0-9_-]+$/.test(payload)) return payload
+  return payload[0]!.toUpperCase() + toBase32(fromBase64Url(payload.slice(1)))
+}
+
 export async function decodeDescription(payload: string): Promise<RTCSessionDescriptionInit> {
   const text = payload.trim()
-  const type = text[0] === 'o' ? 'offer' : text[0] === 'a' ? 'answer' : null
+  const type = /^[oO]/.test(text) ? 'offer' : /^[aA]/.test(text) ? 'answer' : null
   if (!type) throw new Error('Not a Stub pairing code')
-  const f = unpack(fromBase64Url(text.slice(1)))
+  const bytes = /^[OA][A-Z2-7]+$/.test(text) ? fromBase32(text.slice(1)) : fromBase64Url(text.slice(1))
+  const f = unpack(bytes)
   if (!f.ufrag || !f.pwd || !f.mid) throw new Error('Not a Stub pairing code')
   return { type, sdp: writeSdp(f) }
 }

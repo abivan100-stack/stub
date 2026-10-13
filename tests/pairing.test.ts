@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { decodeDescription, encodeDescription, readFields, writeSdp } from '../src/pairing/sdp'
+import { decodeDescription, encodeDescription, fromBase32, readFields, toBase32, toQrForm, writeSdp } from '../src/pairing/sdp'
 import { FrameCollector, toFrames } from '../src/pairing/frames'
 import { verificationCode } from '../src/pairing/code'
 
@@ -65,6 +65,22 @@ describe('SDP compression', () => {
     expect(payload.length).toBeLessThanOrEqual(100)
   })
 
+  it('has a QR form in base32 that decodes to the same description', async () => {
+    const text = await encodeDescription({ type: 'answer', sdp: OFFER.replace('actpass', 'active') })
+    const qr = toQrForm(text)
+    expect(qr[0]).toBe('A')
+    expect(qr).toMatch(/^A[A-Z2-7]+$/) // QR alphanumeric mode
+    expect(await decodeDescription(qr)).toEqual(await decodeDescription(text))
+    expect(toQrForm('WIFI:T:WPA;S:x;P:y;;')).toBe('WIFI:T:WPA;S:x;P:y;;')
+  })
+
+  it('base32 round-trips any bytes', () => {
+    for (const n of [0, 1, 2, 3, 4, 5, 6, 31, 75]) {
+      const b = Uint8Array.from({ length: n }, (_, i) => (i * 37 + n) & 0xff)
+      expect(fromBase32(toBase32(b))).toEqual(b)
+    }
+  })
+
   it('rejects text that is not a pairing code', async () => {
     await expect(decodeDescription('hello')).rejects.toThrow()
     await expect(decodeDescription('oAAAA')).rejects.toThrow()
@@ -85,7 +101,7 @@ describe('multi-frame QR', () => {
   })
 
   it('uses a single frame for short payloads and accepts a pasted bare code', () => {
-    expect(toFrames('abc')).toEqual(['1/1:abc'])
+    expect(toFrames('abc')).toEqual(['abc'])
     expect(new FrameCollector().add('1/1:abc')).toBe('abc')
     expect(new FrameCollector().add('  oAbc  ')).toBe('oAbc')
   })

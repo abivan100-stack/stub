@@ -1,11 +1,12 @@
 // Splits a long payload across several QR codes shown in a loop: "2/3:<slice>".
-// Short payloads still go out as one frame ("1/1:..."), so the scanner has one code path.
+// A payload that fits in one code goes out as is, with no header.
 
 export const FRAME_SIZE = 320
 const FRAME = /^(\d+)\/(\d+):(.*)$/s
 
 export function toFrames(payload: string, size = FRAME_SIZE): string[] {
   const n = Math.max(1, Math.ceil(payload.length / size))
+  if (n === 1) return [payload]
   return Array.from({ length: n }, (_, i) => `${i + 1}/${n}:${payload.slice(i * size, (i + 1) * size)}`)
 }
 
