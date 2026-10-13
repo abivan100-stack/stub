@@ -16,6 +16,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(StubWifiPlugin.class);
         registerPlugin(StubNfcPlugin.class);
         registerPlugin(StubScreenPlugin.class);
+        registerPlugin(StubHostPlugin.class);
         super.onCreate(savedInstanceState);
         // The transfer runs in the WebView, so keep its renderer at full priority when Stub is hidden.
         if (Build.VERSION.SDK_INT >= 26) {

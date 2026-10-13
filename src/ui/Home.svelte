@@ -7,12 +7,15 @@
     offlineReady,
     shared = [],
     onclearshared,
+    onhost,
   }: {
     onsend: () => void
     onreceive: () => void
     offlineReady: boolean
     shared?: File[]
     onclearshared?: () => void
+    /** Android app only: show the phone's address so a laptop can pair without scanning. */
+    onhost?: () => void
   } = $props()
 </script>
 
@@ -50,11 +53,20 @@
     </button>
   </div>
 
+  <div class="more">
+  {#if onhost}
+    <button class="laptop" onclick={onhost}>
+      <span>Connect a laptop</span>
+      <span class="quiet">Type an address and a PIN instead of scanning</span>
+    </button>
+  {/if}
+
   <ol class="steps">
     <li><span class="n mono">1</span>Tap Send on one device and Receive on the other.</li>
     <li><span class="n mono">2</span>Scan each other’s code.</li>
     <li><span class="n mono">3</span>Check the six digits match, then pick your files.</li>
   </ol>
+  </div>
 </main>
 
 <style>
@@ -201,8 +213,31 @@
     clip-path: inset(0 50% 0 0);
   }
 
-  .steps {
+  .more {
     grid-area: steps;
+    display: grid;
+    gap: var(--s4);
+  }
+  .laptop {
+    appearance: none;
+    display: grid;
+    gap: 2px;
+    padding: var(--s3) var(--s4);
+    border: var(--line) solid var(--rule);
+    border-radius: var(--radius);
+    background: var(--slip);
+    color: var(--ink);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .laptop span:first-child {
+    font-weight: 650;
+  }
+  .laptop .quiet {
+    font-size: var(--t-sm);
+  }
+  .steps {
     list-style: none;
     margin: 0;
     padding: 0;

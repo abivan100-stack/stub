@@ -7,9 +7,8 @@ export function chunkCount(size: number): number {
   return Math.ceil(size / CHUNK_SIZE)
 }
 
-export async function sha256(data: BufferSource): Promise<Uint8Array> {
-  return new Uint8Array(await crypto.subtle.digest('SHA-256', data))
-}
+import { sha256 } from '../sha256'
+export { sha256 }
 
 export function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
   return a.length === b.length && a.every((v, i) => v === b[i])

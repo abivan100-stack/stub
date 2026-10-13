@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
+import { networkInterfaces } from 'node:os'
 
 // Two isolated browser contexts play the two phones. They pair through the text fallback
 // (the same codes the QR carries), then send a file end to end over a real RTCDataChannel.
@@ -123,4 +124,56 @@ test('when the other device is unreachable, the error screen shows connection de
   await expect(bob.getByText(/This device: .*\(udp\)/)).toBeVisible()
   await expect(bob.getByText(/Other device: .*\(udp\)/)).toBeVisible()
   await shot(bob, 'error-details')
+})
+
+// This PC's LAN address. Loading Stub from it over http gives a real insecure context (no WebCrypto,
+// no camera), which is what a laptop gets when it opens the address shown on a Stub phone.
+const lan = Object.values(networkInterfaces())
+  .flat()
+  .find((a) => a && a.family === 'IPv4' && !a.internal)?.address
+
+test('a laptop pairs through the phone with a PIN, without scanning', async ({ browser }) => {
+  test.skip(!lan, 'needs a LAN address')
+  const phone = await (await browser.newContext({ permissions: ['camera'] })).newPage()
+  const laptop = await (await browser.newContext()).newPage()
+
+  // Stand-in for the phone's StubHostServer: check the PIN, let the phone page answer the offer.
+  await laptop.route('**/__stub/host', (r) => r.fulfill({ body: 'stub' }))
+  await laptop.route('**/__stub/pair', async (r) => {
+    const [pin, offer] = r.request().postData()!.split('\n')
+    if (pin !== '4821') return r.fulfill({ status: 403, body: "That PIN doesn't match. Check the phone." })
+    await phone.goto('/')
+    await phone.getByRole('button', { name: /^Receive/ }).click()
+    await pasteCode(phone, offer!)
+    await expect(phone.getByText('Waiting for them to scan')).toBeVisible()
+    await r.fulfill({ body: await copyCode(phone) })
+  })
+
+  await laptop.goto(`http://${lan}:5174/`)
+  expect(await laptop.evaluate(() => isSecureContext)).toBe(false)
+  await expect(laptop.getByRole('heading', { name: 'Enter the PIN on the phone' })).toBeVisible()
+
+  await laptop.getByLabel('PIN').fill('1234')
+  await laptop.getByRole('button', { name: 'Connect' }).click()
+  await expect(laptop.getByText("That PIN doesn't match. Check the phone.")).toBeVisible()
+
+  await laptop.getByLabel('PIN').fill('4821')
+  await laptop.getByRole('button', { name: 'Connect' }).click()
+
+  const code = laptop.locator('.sr-only', { hasText: 'Your code is' })
+  await expect(code).toBeAttached({ timeout: 20_000 })
+  await expect(phone.locator('.sr-only', { hasText: 'Your code is' })).toHaveText((await code.textContent())!)
+  await laptop.getByRole('button', { name: 'Match', exact: true }).click()
+  await phone.getByRole('button', { name: 'Match', exact: true }).click()
+
+  // The laptop hashes every chunk with the JS SHA-256 fallback; the phone checks with WebCrypto.
+  const data = Buffer.alloc(300_000)
+  for (let i = 0; i < data.length; i++) data[i] = (i * 13 + (i >> 8)) & 0xff
+  await laptop.getByTestId('file-input').setInputFiles([{ name: 'plan.bin', mimeType: 'application/octet-stream', buffer: data }])
+  await laptop.getByRole('button', { name: 'Send', exact: true }).click()
+  await phone.getByRole('button', { name: 'Accept' }).click()
+  await expect(phone.getByRole('heading', { name: 'All done' })).toBeVisible({ timeout: 30_000 })
+  const download = phone.waitForEvent('download')
+  await phone.getByRole('link', { name: 'Save plan.bin' }).click()
+  expect((await readFile(await (await download).path())).equals(data)).toBe(true)
 })

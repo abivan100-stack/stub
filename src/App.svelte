@@ -1,17 +1,19 @@
 <script lang="ts">
   import { Capacitor } from '@capacitor/core'
   import { registerSW } from 'virtual:pwa-register'
-  import { stopWifi, type Link } from './pairing'
+  import { servedByPhone, stopWifi, type Link } from './pairing'
   import { Peer, onShared, takeShared } from './transfer'
   import Home from './ui/Home.svelte'
   import SendFlow from './ui/SendFlow.svelte'
+  import HostFlow from './ui/HostFlow.svelte'
+  import RemotePair from './ui/RemotePair.svelte'
   import ReceiveFlow from './ui/ReceiveFlow.svelte'
   import Verify from './ui/Verify.svelte'
   import Transfer from './ui/Transfer.svelte'
   import Problem from './ui/Problem.svelte'
   import type { ProblemKind } from './ui/problems'
 
-  type View = 'home' | 'send' | 'receive' | 'verify' | 'transfer' | 'problem'
+  type View = 'home' | 'send' | 'receive' | 'host' | 'remote' | 'verify' | 'transfer' | 'problem'
 
   let view = $state<View>('home')
   let link = $state.raw<Link | null>(null)
@@ -32,6 +34,9 @@
       .catch((e) => alert(`Couldn't read the shared file. ${e instanceof Error ? e.message : ''}`))
   collectShared()
   onShared(collectShared)
+
+  // A laptop that opened the address shown on a Stub phone goes straight to the PIN screen.
+  servedByPhone().then((yes) => yes && view === 'home' && (view = 'remote'))
 
   function linked(l: Link) {
     link = l
@@ -73,7 +78,12 @@
     onclearshared={() => (shared = [])}
     onsend={() => (view = 'send')}
     onreceive={() => (view = 'receive')}
+    onhost={native ? () => (view = 'host') : undefined}
   />
+{:else if view === 'host'}
+  <HostFlow onlink={linked} onfail={fail} onback={home} />
+{:else if view === 'remote'}
+  <RemotePair onlink={linked} onfail={fail} onback={home} />
 {:else if view === 'send'}
   <SendFlow onlink={linked} onfail={fail} onback={home} />
 {:else if view === 'receive'}

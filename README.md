@@ -127,6 +127,8 @@ No shared Wi-Fi? On the Send screen, the Android app offers "Make a hotspot" ([`
 
 With NFC switched on, phones can pair by tapping instead of scanning the first code. The sending phone poses as an NFC tag that holds its code, plus the Wi-Fi details when it made a hotspot ([`StubTagService.java`](android/app/src/main/java/com/abivan/stub/StubTagService.java)), and the receiving phone reads it ([`StubNfcPlugin.java`](android/app/src/main/java/com/abivan/stub/StubNfcPlugin.java)). The reply still goes back by QR code. Some phones only answer NFC reads while unlocked.
 
+**Connect a laptop without scanning.** On the Android app's home screen, "Connect a laptop" starts a small web server on the phone ([`StubHostServer.java`](android/app/src/main/java/com/abivan/stub/StubHostServer.java), port 8080) and shows its address and a 4-digit PIN. The laptop types the address (for example `http://192.168.0.177:8080`) into any browser, gets Stub straight from the phone (no internet, no prior visit to the website), and enters the PIN; the pairing codes travel over that connection. Five wrong PINs lock it, only one device can pair, and the server stops as soon as the devices are paired. The 6-digit check still follows. A page served over plain http has no WebCrypto, so Stub falls back to a built-in SHA-256 ([`src/sha256.ts`](src/sha256.ts)).
+
 Android unit tests (JVM, no device needed):
 
 ```bash
