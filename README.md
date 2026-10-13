@@ -97,7 +97,7 @@ The site must be served over HTTPS for the camera and the service worker. Users 
 
 The `android/` folder wraps the same web build in a native app (`com.abivan.stub`) with [Capacitor](https://capacitorjs.com). See [docs/android-app-options.md](docs/android-app-options.md) for why Capacitor and what comes next.
 
-You need JDK 21 and the Android SDK (platform 36, build-tools, platform-tools). Android Studio includes both. Point `android/local.properties` at the SDK with `sdk.dir=...`.
+You need JDK 21 and the Android SDK (platform 36, build-tools, platform-tools). Android Studio includes both. Set `ANDROID_HOME` to the SDK folder and `JAVA_HOME` to JDK 21.
 
 Build a debug APK:
 
@@ -119,7 +119,7 @@ Inside the app the service worker is skipped, because every file ships in the AP
 
 Received files are streamed into `Download/Stub` by a small native plugin, [`StubFilesPlugin.java`](android/app/src/main/java/com/abivan/stub/StubFilesPlugin.java), through MediaStore (Android 10+, no storage permission needed). On Android 7 to 9 they go to Stub's own app folder instead. Open hands the file to another app.
 
-Known gap until the next plugin lands: transfers pause when the app is in the background.
+While files are moving, a foreground service ([`TransferService.java`](android/app/src/main/java/com/abivan/stub/TransferService.java)) shows a progress notification and holds a CPU wake lock and a Wi-Fi lock, so transfers keep going with the screen off or another app open. The WebView renderer keeps full priority while hidden. On Android 15+ the system allows 6 hours of this per day; after that, transfers continue only while Stub is open.
 
 If Gradle or `sdkmanager` fails with an SSL error behind antivirus HTTPS scanning, set `JAVA_TOOL_OPTIONS=-Djavax.net.ssl.trustStoreType=Windows-ROOT` so Java uses the Windows certificate store.
 

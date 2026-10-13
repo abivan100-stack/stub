@@ -61,3 +61,30 @@ export function openSaved(uri: string, mime: string): Promise<void> {
   // The only expected failure is "No app on this phone can open this file"; tell the user plainly.
   return files.openFile({ uri, mime: mime || '*/*' }).catch((e: Error) => alert(e.message))
 }
+
+// Background transfers: a foreground service (TransferService.java) keeps the app, CPU and Wi-Fi awake.
+interface StubTransfer {
+  keepAlive(o: { title: string; text: string; percent: number }): Promise<void>
+  release(): Promise<void>
+}
+
+const transfer = registerPlugin<StubTransfer>('StubTransfer')
+let held = false
+let lastUpdate = 0
+
+/** Call on every progress change while files are moving; updates the notification at most once a second. */
+export function keepAlive(title: string, text: string, percent: number): void {
+  if (!isNative) return
+  const now = Date.now()
+  if (held && now - lastUpdate < 1000) return
+  held = true
+  lastUpdate = now
+  // If Android refuses (e.g. the daily background budget is spent), the transfer still runs while Stub is open.
+  transfer.keepAlive({ title, text, percent }).catch(() => {})
+}
+
+export function release(): void {
+  if (!isNative || !held) return
+  held = false
+  transfer.release().catch(() => {})
+}

@@ -5,9 +5,11 @@
     canStreamToDisk,
     folderSink,
     isNative,
+    keepAlive,
     memorySink,
     nativeSink,
     openSaved,
+    release,
     type IncomingBatch,
     type Peer,
   } from '../transfer'
@@ -72,6 +74,20 @@
   const sent = $derived(shown.filter((t) => t.dir === 'out' && t.status === 'done'))
   const doneBytes = $derived([...received, ...sent].reduce((n, t) => n + t.size, 0))
   const missed = $derived(shown.length - received.length - sent.length)
+
+  // Android app: keep a foreground service (with a progress notification) while anything is moving,
+  // so transfers survive the screen turning off or switching apps. No-op on the web.
+  const moving = $derived(shown.filter((t) => t.status === 'active' || t.status === 'queued' || t.status === 'checking'))
+  $effect(() => {
+    if (!moving.length) return release()
+    const size = moving.reduce((n, t) => n + t.size, 0)
+    const done = moving.reduce((n, t) => n + t.bytes, 0)
+    const percent = size ? Math.floor((done / size) * 100) : 0
+    const out = moving.some((t) => t.dir === 'out')
+    const inn = moving.some((t) => t.dir === 'in')
+    keepAlive(out && inn ? 'Sending and receiving' : out ? 'Sending' : 'Receiving', `${plural(moving.length, 'file')}, ${percent}%`, percent)
+  })
+  $effect(() => release) // leaving the transfer screen
 </script>
 
 <svelte:window

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status-bar icon: the Stub ticket as a white silhouette (Android tints it). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M3,6h18v4.5a1.5,1.5 0,0 0,0 3V18H3v-4.5a1.5,1.5 0,0 0,0 -3z M15,7.5v1h1v-1z M15,10v1h1v-1z M15,12.5v1h1v-1z M15,15v1h1v-1z M6,10h6v1.2H6z M6,12.8h4.5V14H6z" />
+</vector>
