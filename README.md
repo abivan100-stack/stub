@@ -115,9 +115,11 @@ cd android && ./gradlew assembleDebug
 
 The APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`. Install it with `adb install -r <apk>`, or copy it to the phone and open it.
 
-Inside the app the service worker is skipped, because every file ships in the APK. Known gaps until native plugins land:
-- Save/Open of received files doesn't work yet (Android WebView ignores blob downloads).
-- Transfers pause when the app is in the background.
+Inside the app the service worker is skipped, because every file ships in the APK.
+
+Received files are streamed into `Download/Stub` by a small native plugin, [`StubFilesPlugin.java`](android/app/src/main/java/com/abivan/stub/StubFilesPlugin.java), through MediaStore (Android 10+, no storage permission needed). On Android 7 to 9 they go to Stub's own app folder instead. Open hands the file to another app.
+
+Known gap until the next plugin lands: transfers pause when the app is in the background.
 
 If Gradle or `sdkmanager` fails with an SSL error behind antivirus HTTPS scanning, set `JAVA_TOOL_OPTIONS=-Djavax.net.ssl.trustStoreType=Windows-ROOT` so Java uses the Windows certificate store.
 

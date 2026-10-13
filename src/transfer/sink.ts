@@ -1,8 +1,11 @@
-// Where received bytes go: straight to a folder on disk (Chromium), or into memory as a Blob.
+// Where received bytes go: straight to a folder on disk (Chromium), into memory as a Blob,
+// or, in the Android app, into Download/Stub (see native.ts).
 
 export interface SinkResult {
   blob?: Blob
   savedTo?: string
+  /** content:// URI of the saved file in the Android app, for opening it in another app. */
+  uri?: string
 }
 
 export interface Sink {

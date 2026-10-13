@@ -1,5 +1,16 @@
 <script lang="ts">
-  import { FINISHED, MEMORY_LIMIT, canStreamToDisk, folderSink, memorySink, type IncomingBatch, type Peer } from '../transfer'
+  import {
+    FINISHED,
+    MEMORY_LIMIT,
+    canStreamToDisk,
+    folderSink,
+    isNative,
+    memorySink,
+    nativeSink,
+    openSaved,
+    type IncomingBatch,
+    type Peer,
+  } from '../transfer'
   import Bar from './Bar.svelte'
   import TicketView from './Ticket.svelte'
   import { bytes, plural, spaced, urlFor } from './format'
@@ -43,8 +54,8 @@
   }
 
   async function accept(b: IncomingBatch) {
-    let sink = memorySink()
-    if (canStreamToDisk && b.total > 100e6) {
+    let sink = isNative ? nativeSink() : memorySink()
+    if (!isNative && canStreamToDisk && b.total > 100e6) {
       try {
         sink = folderSink(await window.showDirectoryPicker!({ mode: 'readwrite', id: 'stub' }))
       } catch {
@@ -55,7 +66,7 @@
   }
 
   const find = (id: string, dir: string) => peer.tickets.find((x) => x.id === id && x.dir === dir)!
-  const tooBig = (b: IncomingBatch) => !canStreamToDisk && b.tickets.some((t) => t.size > MEMORY_LIMIT)
+  const tooBig = (b: IncomingBatch) => !isNative && !canStreamToDisk && b.tickets.some((t) => t.size > MEMORY_LIMIT)
   const stagedSize = $derived(staged.reduce((n, f) => n + f.size, 0))
   const received = $derived(shown.filter((t) => t.dir === 'in' && t.status === 'done'))
   const sent = $derived(shown.filter((t) => t.dir === 'out' && t.status === 'done'))
@@ -102,6 +113,8 @@
       </ul>
       {#if tooBig(b)}
         <p class="warn">This browser holds received files in memory, and these are large. It may run out. Chrome on a laptop or Android saves straight to disk instead.</p>
+      {:else if isNative}
+        <p class="quiet">Files are saved to Download/Stub on this phone.</p>
       {:else if canStreamToDisk && b.total > 100e6}
         <p class="quiet">You’ll pick a folder. Files are written straight to it as they arrive.</p>
       {/if}
@@ -147,7 +160,12 @@
                   <a class="btn small" href={urlFor(t.blob)} target="_blank" rel="noopener">Open<span class="sr-only"> {t.name}</span></a>
                 </div>
               {:else}
-                <span class="quiet">Saved to {t.savedTo}</span>
+                <div class="acts">
+                  <span class="quiet">Saved to {t.savedTo}</span>
+                  {#if t.uri}
+                    <button class="btn small" onclick={() => openSaved(t.uri!, t.type)}>Open<span class="sr-only"> {t.name}</span></button>
+                  {/if}
+                </div>
               {/if}
             </li>
           {/each}

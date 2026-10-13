@@ -45,6 +45,7 @@ export interface Ticket {
   error?: string
   blob?: Blob
   savedTo?: string
+  uri?: string
 }
 
 export interface IncomingBatch {

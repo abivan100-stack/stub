@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Ticket } from '../transfer'
+  import { openSaved } from '../transfer'
   import { bytes, eta, speed, urlFor } from './format'
 
   let { t, oncancel, onretry }: { t: Ticket; oncancel: () => void; onretry: () => void } = $props()
@@ -71,6 +72,8 @@
     {:else if t.status === 'done' && t.blob}
       <a class="btn small" href={urlFor(t.blob)} download={t.name}>Save<span class="sr-only"> {t.name}</span></a>
       <a class="btn small" href={urlFor(t.blob)} target="_blank" rel="noopener">Open<span class="sr-only"> {t.name}</span></a>
+    {:else if t.status === 'done' && t.uri}
+      <button class="btn small" onclick={() => openSaved(t.uri!, t.type)}>Open<span class="sr-only"> {t.name}</span></button>
     {/if}
   </div>
 
