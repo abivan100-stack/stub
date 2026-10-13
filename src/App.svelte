@@ -79,6 +79,7 @@
     onsend={() => (view = 'send')}
     onreceive={() => (view = 'receive')}
     onhost={native ? () => (view = 'host') : undefined}
+    codeEntry={!native}
   />
 {:else if view === 'host'}
   <HostFlow onlink={linked} onfail={fail} onback={home} />

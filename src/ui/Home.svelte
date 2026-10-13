@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { decodeDirect, directUrl } from '../pairing'
   import { bytes, plural } from './format'
 
   let {
@@ -8,6 +9,7 @@
     shared = [],
     onclearshared,
     onhost,
+    codeEntry = false,
   }: {
     onsend: () => void
     onreceive: () => void
@@ -16,7 +18,23 @@
     onclearshared?: () => void
     /** Android app only: show the phone's address so a laptop can pair without scanning. */
     onhost?: () => void
+    /** Web only: type the short code a phone shows under "Connect a laptop". */
+    codeEntry?: boolean
   } = $props()
+
+  let code = $state('')
+  let codeProblem = $state<string | null>(null)
+
+  function goToPhone(e: SubmitEvent) {
+    e.preventDefault()
+    const target = decodeDirect(code)
+    if (!target) {
+      codeProblem = 'That isn’t a phone code. Check it on the phone and try again.'
+      return
+    }
+    // The phone serves Stub itself; the PIN rides in the #fragment, which never leaves this browser.
+    location.href = directUrl(target)
+  }
 </script>
 
 <main class="home">
@@ -54,6 +72,26 @@
   </div>
 
   <div class="more">
+  {#if codeEntry}
+    <form class="phonecode" onsubmit={goToPhone}>
+      <label for="phone-code">Got a code from a phone?</label>
+      <div class="row">
+        <input
+          id="phone-code"
+          class="mono"
+          bind:value={code}
+          oninput={() => (codeProblem = null)}
+          placeholder="7KQ-2MX4"
+          autocomplete="off"
+          autocapitalize="characters"
+          spellcheck="false"
+          aria-describedby={codeProblem ? 'phone-code-problem' : undefined}
+        />
+        <button class="btn small" type="submit" disabled={!code.trim()}>Connect</button>
+      </div>
+      {#if codeProblem}<p id="phone-code-problem" class="problem" role="alert">{codeProblem}</p>{/if}
+    </form>
+  {/if}
   {#if onhost}
     <button class="laptop" onclick={onhost}>
       <span>Connect a laptop</span>
@@ -217,6 +255,32 @@
     grid-area: steps;
     display: grid;
     gap: var(--s4);
+  }
+  .phonecode {
+    display: grid;
+    gap: var(--s2);
+    font-size: var(--t-sm);
+  }
+  .phonecode .row {
+    display: flex;
+    gap: var(--s2);
+  }
+  .phonecode input {
+    flex: 1;
+    min-width: 0;
+    min-height: 40px;
+    padding: 0 var(--s3);
+    border: var(--line) solid var(--rule);
+    border-radius: var(--radius);
+    background: var(--slip);
+    color: var(--ink);
+    font-size: var(--t-md);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .phonecode .problem {
+    padding-left: var(--s3);
+    border-left: 4px solid var(--danger);
   }
   .laptop {
     appearance: none;

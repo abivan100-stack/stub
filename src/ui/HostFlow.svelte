@@ -1,6 +1,8 @@
 <script lang="ts">
   import {
     acceptOffer,
+    encodeDirect,
+    formatDirect,
     hostAddresses,
     startHosting,
     startHotspot,
@@ -105,8 +107,8 @@
 
 <main class="host">
   <div class="copy">
-    <h1>Open this on the laptop</h1>
-    <p class="quiet">Type the address into the laptop’s browser, then enter the PIN. No scanning.</p>
+    <h1>Connect a laptop</h1>
+    <p class="quiet">On the laptop, open <strong>stub-black.vercel.app</strong> and type this code. No scanning.</p>
   </div>
 
   {#if startError}
@@ -134,22 +136,26 @@
       </div>
     {/if}
 
-    <div class="slip step">
-      <p class="label">{hotspot ? 'Then open' : 'Open'}</p>
-      {#if addresses.length}
+    {#if addresses.length}
+      <div class="slip step">
+        <p class="label">{hotspot ? 'Then, on stub-black.vercel.app, enter' : 'Code'}</p>
         {#each addresses as ip}
-          <p class="address mono" data-testid="host-address"><span class="scheme">http://</span>{ip}:{info.port}</p>
+          <p class="code mono" data-testid="host-code">{formatDirect(encodeDirect({ ip, port: info.port, pin: info.pin }))}</p>
         {/each}
-        {#if addresses.length > 1}<p class="quiet small">Try the one on the same network as the laptop.</p>{/if}
-      {:else}
-        <p class="quiet">This phone isn’t on a Wi-Fi network. Join one, or make a hotspot below.</p>
-      {/if}
-    </div>
+        {#if addresses.length > 1}<p class="quiet small">Two networks: try the first code, then the second.</p>{/if}
+      </div>
 
-    <div class="slip step">
-      <p class="label">PIN</p>
-      <p class="pin mono" data-testid="host-pin" aria-label="PIN {info.pin.split('').join(' ')}">{info.pin}</p>
-    </div>
+      <details class="slip step manual">
+        <summary>Laptop never opened the Stub site? Type an address instead</summary>
+        <p class="quiet small">Type this into the laptop’s address bar (no need for http://), then enter the PIN.</p>
+        {#each addresses as ip}
+          <p class="address mono" data-testid="host-address">{ip}:{info.port}</p>
+        {/each}
+        <p class="pin-line">PIN <span class="mono" data-testid="host-pin">{info.pin}</span></p>
+      </details>
+    {:else}
+      <p class="slip step quiet">This phone isn’t on a Wi-Fi network. Join one, or make a hotspot below.</p>
+    {/if}
 
     <p class="status mono" role="status">{status ?? 'Waiting for the laptop'}</p>
 
@@ -197,15 +203,25 @@
     font-weight: 500;
     word-break: break-all;
   }
-  .scheme {
-    color: var(--ink-2);
-    font-size: 0.7em;
-  }
-  .pin {
-    font-size: clamp(2.5rem, 14vw, 3.5rem);
+  .code {
+    font-size: clamp(2.5rem, 13vw, 3.5rem);
     font-weight: 500;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.08em;
     line-height: 1;
+  }
+  .manual summary {
+    cursor: pointer;
+    font-size: var(--t-sm);
+  }
+  .pin-line {
+    font-size: var(--t-sm);
+    color: var(--ink-2);
+  }
+  .pin-line span {
+    margin-left: var(--s2);
+    font-size: var(--t-lg);
+    color: var(--ink);
+    letter-spacing: 0.15em;
   }
   .small {
     font-size: var(--t-xs);

@@ -16,8 +16,17 @@
 
   $effect(() => input?.focus())
 
-  async function connect(e: SubmitEvent) {
-    e.preventDefault()
+  // Arrived from a phone code on the Stub website: the PIN is in the #fragment. Use it once, then drop it.
+  $effect(() => {
+    const m = /^#pin=(\d{4})$/.exec(location.hash)
+    if (!m) return
+    history.replaceState(null, '', location.pathname + location.search)
+    pin = m[1]!
+    void connect()
+  })
+
+  async function connect(e?: SubmitEvent) {
+    e?.preventDefault()
     if (pin.length !== 4 || busy) return
     busy = true
     problem = null

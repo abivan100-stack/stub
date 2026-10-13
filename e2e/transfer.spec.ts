@@ -177,3 +177,29 @@ test('a laptop pairs through the phone with a PIN, without scanning', async ({ b
   await phone.getByRole('link', { name: 'Save plan.bin' }).click()
   expect((await readFile(await (await download).path())).equals(data)).toBe(true)
 })
+
+test('a short phone code on the Stub website goes straight to the phone, PIN filled in', async ({ page }) => {
+  const { encodeDirect, formatDirect } = await import('../src/pairing/directcode')
+  // Stand-in for the phone at 127.0.0.1:5174 (the dev server), with PIN 4821.
+  let pinSeen = ''
+  // Only the "phone" address answers as a Stub phone; the website itself (localhost) must not.
+  await page.route('http://127.0.0.1:5174/__stub/host', (r) => r.fulfill({ body: 'stub' }))
+  await page.route('http://127.0.0.1:5174/__stub/pair', (r) => {
+    pinSeen = r.request().postData()!.split('\n')[0]!
+    return r.fulfill({ status: 403, body: "That PIN doesn't match. Check the phone." })
+  })
+
+  await page.goto('/')
+  await page.getByLabel('Got a code from a phone?').fill('nope')
+  await page.getByRole('button', { name: 'Connect' }).click()
+  await expect(page.getByText('That isn’t a phone code')).toBeVisible()
+
+  const code = formatDirect(encodeDirect({ ip: '127.0.0.1', port: 5174, pin: '4821' })).toLowerCase()
+  await page.getByLabel('Got a code from a phone?').fill(code)
+  await page.getByRole('button', { name: 'Connect' }).click()
+
+  await expect(page.getByRole('heading', { name: 'Enter the PIN on the phone' })).toBeVisible()
+  await expect.poll(() => pinSeen).toBe('4821') // connected on its own, with the PIN from the code
+  expect(new URL(page.url()).host).toBe('127.0.0.1:5174')
+  expect(new URL(page.url()).hash).toBe('') // PIN dropped from the address bar
+})
