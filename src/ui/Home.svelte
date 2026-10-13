@@ -8,6 +8,13 @@
     <span class="ready mono" class:on={offlineReady}>{offlineReady ? 'Works offline' : 'Saving for offline use'}</span>
   </header>
 
+  <section class="intro">
+    <h1>Pass files across the room.</h1>
+    <p class="lede">
+      Phone to phone, or laptop to phone, over the same Wi-Fi or hotspot. No internet, no account, nothing uploaded.
+    </p>
+  </section>
+
   <div class="pass">
     <button class="half send" onclick={onsend}>
       <span class="word">Send</span>
@@ -20,20 +27,27 @@
     </button>
   </div>
 
-  <p class="foot quiet">Both devices on the same Wi-Fi or hotspot. Files go straight across and are never uploaded.</p>
+  <ol class="steps">
+    <li><span class="n mono">1</span>Tap Send on one device and Receive on the other.</li>
+    <li><span class="n mono">2</span>Scan each other’s code.</li>
+    <li><span class="n mono">3</span>Check the six digits match, then pick your files.</li>
+  </ol>
 </main>
 
 <style>
   .home {
     min-height: 100dvh;
     display: grid;
-    grid-template-rows: auto 1fr auto;
-    gap: var(--s4);
-    padding: env(safe-area-inset-top) var(--s4) calc(var(--s4) + env(safe-area-inset-bottom));
+    grid-template-areas: 'top' 'intro' 'pass' 'steps';
+    grid-template-rows: auto auto minmax(19rem, 1fr) auto;
+    gap: var(--s5);
     max-width: 72rem;
     margin: 0 auto;
+    padding: env(safe-area-inset-top) var(--s4) calc(var(--s6) + env(safe-area-inset-bottom));
   }
+
   .top {
+    grid-area: top;
     display: flex;
     align-items: baseline;
     justify-content: space-between;
@@ -44,11 +58,11 @@
     font-stretch: 62%;
   }
   .ready {
-    font-size: var(--t-xs);
-    color: var(--ink-2);
     display: inline-flex;
     align-items: center;
     gap: var(--s2);
+    font-size: var(--t-xs);
+    color: var(--ink-2);
   }
   .ready::before {
     content: '';
@@ -61,31 +75,45 @@
     background: var(--ink-2);
   }
 
+  .intro {
+    grid-area: intro;
+    display: grid;
+    gap: var(--s3);
+  }
+  h1 {
+    font-size: clamp(2.6rem, 11vw, 5.5rem);
+    font-stretch: 62%;
+    line-height: 0.9;
+    max-width: 9ch;
+  }
+  .lede {
+    max-width: 34ch;
+    color: var(--ink-2);
+  }
+
   /* One ticket, torn in two. */
   .pass {
+    grid-area: pass;
     display: grid;
     grid-template-rows: 1fr auto 1fr;
     border: var(--line) solid var(--rule);
     border-radius: var(--radius);
     background: var(--slip);
-    min-height: 0;
   }
   .half {
     appearance: none;
-    position: relative;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
     align-items: flex-start;
     gap: var(--s2);
-    min-height: 34vh;
     padding: var(--s5);
     border: 0;
     background: none;
     color: var(--ink);
+    font: inherit;
     text-align: left;
     cursor: pointer;
-    font: inherit;
     -webkit-tap-highlight-color: transparent;
   }
   .send {
@@ -94,7 +122,7 @@
     border-radius: 1px 1px 0 0;
   }
   .word {
-    font: 800 var(--t-3xl) / 0.8 var(--display);
+    font: 800 clamp(4rem, 17vw, 7.5rem) / 0.8 var(--display);
     font-stretch: 62%;
     letter-spacing: -0.02em;
     transition: font-stretch 180ms cubic-bezier(0.3, 0, 0, 1);
@@ -107,7 +135,6 @@
     font-stretch: 66%;
   }
   .sub {
-    font-size: var(--t-md);
     font-weight: 500;
   }
   .half:focus-visible {
@@ -117,7 +144,6 @@
 
   .tear {
     position: relative;
-    height: 0;
     border-top: 2px dotted var(--rule);
     margin: 0 calc(var(--line) * -1);
   }
@@ -141,46 +167,49 @@
     clip-path: inset(0 50% 0 0);
   }
 
-  .foot {
+  .steps {
+    grid-area: steps;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: var(--line) solid var(--rule);
+  }
+  .steps li {
+    display: flex;
+    gap: var(--s3);
+    padding: var(--s3) 0;
+    border-bottom: 1px solid var(--rule-soft);
     font-size: var(--t-sm);
   }
+  .n {
+    flex: none;
+    width: 1.5rem;
+    color: var(--ink-2);
+  }
 
-  @media (min-width: 52rem) {
+  /* Desktop: words on the left, the ticket on the right, all in one screen. */
+  @media (min-width: 60rem) {
     .home {
+      height: 100dvh;
+      min-height: 40rem;
+      grid-template-areas: 'top top' 'intro pass' 'steps pass';
+      grid-template-columns: 1fr minmax(0, 1.05fr);
+      grid-template-rows: auto 1fr auto;
+      column-gap: var(--s8);
+      row-gap: var(--s6);
       padding-inline: var(--s6);
+      padding-bottom: var(--s6);
+    }
+    .intro {
+      align-self: end;
       gap: var(--s5);
     }
-    .pass {
-      grid-template-rows: none;
-      grid-template-columns: 1fr auto 1fr;
+    .lede {
+      font-size: var(--t-lg);
+      line-height: 1.35;
     }
     .half {
-      min-height: 0;
       padding: var(--s6);
-    }
-    .send {
-      border-radius: 1px 0 0 1px;
-    }
-    .tear {
-      height: auto;
-      width: 0;
-      border-top: 0;
-      border-left: 2px dotted var(--rule);
-      margin: calc(var(--line) * -1) 0;
-    }
-    .tear::before,
-    .tear::after {
-      left: -13px;
-      right: auto;
-    }
-    .tear::before {
-      top: -12px;
-      clip-path: inset(50% 0 0 0);
-    }
-    .tear::after {
-      top: auto;
-      bottom: -12px;
-      clip-path: inset(0 0 50% 0);
     }
   }
 </style>
