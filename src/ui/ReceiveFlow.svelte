@@ -1,5 +1,14 @@
 <script lang="ts">
-  import { acceptOffer, type Answer, type Link } from '../pairing'
+  import {
+    acceptOffer,
+    joinWifi,
+    parseWifiQr,
+    stopWifi,
+    wifiCapabilities,
+    type Answer,
+    type Link,
+    type WifiCredentials,
+  } from '../pairing'
   import { failureOf, inlineProblem, type ProblemKind } from './problems'
   import Bar from './Bar.svelte'
   import QrCode from './QrCode.svelte'
@@ -9,20 +18,28 @@
     $props()
 
   let answer = $state<Answer | null>(null)
-  let reading = $state(false)
+  let reading = $state<string | null>(null)
   let problem = $state<string | null>(null)
   let attempt = $state(0)
+  // The sender made a hotspot: we joined it (Android app), or the user has to join it by hand (web).
+  let joined = $state<string | null>(null)
+  let joinByHand = $state<WifiCredentials | null>(null)
   let linked = false
   let gone = false
 
   $effect(() => () => {
     gone = true
-    if (!linked) answer?.cancel()
+    if (!linked) {
+      answer?.cancel()
+      stopWifi()
+    }
   })
 
   async function scanned(text: string) {
-    reading = true
     problem = null
+    const wifi = parseWifiQr(text)
+    if (wifi) return useWifi(wifi)
+    reading = 'Reading code'
     try {
       const a = await acceptOffer(text)
       if (gone) return a.cancel()
@@ -40,7 +57,27 @@
       if (!problem) return onfail(kind as ProblemKind)
       attempt++
     } finally {
-      reading = false
+      reading = null
+    }
+  }
+
+  async function useWifi(w: WifiCredentials) {
+    if (!(await wifiCapabilities()).join) {
+      joinByHand = w
+      attempt++
+      return
+    }
+    reading = `Joining ${w.ssid}`
+    try {
+      await joinWifi(w)
+      joined = w.ssid
+      joinByHand = null
+    } catch (e) {
+      problem = e instanceof Error ? e.message : String(e)
+      joinByHand = w
+    } finally {
+      reading = null
+      attempt++
     }
   }
 </script>
@@ -51,11 +88,24 @@
   {#if !answer}
     <div class="copy">
       <h1>Scan their code</h1>
-      <p class="quiet">Point at the screen that tapped Send.</p>
+      <p class="quiet">
+        {joined ? `Joined ${joined}. Now scan their Stub code.` : 'Point at the screen that tapped Send.'}
+      </p>
     </div>
+    {#if joinByHand}
+      <div class="slip byhand" role="status">
+        <p>Join this Wi-Fi in your phone’s settings, then scan their Stub code.</p>
+        <dl class="creds mono">
+          <dt>Network</dt>
+          <dd>{joinByHand.ssid}</dd>
+          <dt>Password</dt>
+          <dd>{joinByHand.password || 'none'}</dd>
+        </dl>
+      </div>
+    {/if}
     <div class="slip panel">
       {#if reading}
-        <p class="wait mono" role="status">Reading code</p>
+        <p class="wait mono" role="status">{reading}</p>
       {:else}
         {#key attempt}<Scanner onresult={scanned} label="Camera view for scanning their code" />{/key}
       {/if}
@@ -73,6 +123,26 @@
 </main>
 
 <style>
+  .byhand {
+    display: grid;
+    gap: var(--s3);
+    padding: var(--s4);
+    border-left: 4px solid var(--signal);
+    font-size: var(--t-sm);
+  }
+  .creds {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--s1) var(--s4);
+    margin: 0;
+  }
+  .creds dt {
+    color: var(--ink-2);
+  }
+  .creds dd {
+    margin: 0;
+    word-break: break-all;
+  }
   .pair {
     display: grid;
     gap: var(--s5);

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Capacitor } from '@capacitor/core'
   import { registerSW } from 'virtual:pwa-register'
-  import type { Link } from './pairing'
+  import { stopWifi, type Link } from './pairing'
   import { Peer, onShared, takeShared } from './transfer'
   import Home from './ui/Home.svelte'
   import SendFlow from './ui/SendFlow.svelte'
@@ -46,6 +46,7 @@
   }
 
   function disconnect() {
+    stopWifi() // ends a hotspot this phone made, or leaves one it joined
     link?.close()
     link = null
     peer = null

@@ -1,3 +1,6 @@
 export { createOffer, acceptOffer, unlockLocalAddresses, PairingError } from './session'
 export type { Link, Offer, Answer, PairingFailure } from './session'
 export { toFrames, FrameCollector } from './frames'
+export { toWifiQr, parseWifiQr } from './wifi'
+export type { WifiCredentials } from './wifi'
+export { wifiCapabilities, startHotspot, joinWifi, stopWifi } from './hotspot'

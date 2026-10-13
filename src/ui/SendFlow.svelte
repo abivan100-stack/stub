@@ -1,5 +1,15 @@
 <script lang="ts">
-  import { createOffer, unlockLocalAddresses, type Link, type Offer } from '../pairing'
+  import {
+    createOffer,
+    startHotspot,
+    stopWifi,
+    toWifiQr,
+    unlockLocalAddresses,
+    wifiCapabilities,
+    type Link,
+    type Offer,
+    type WifiCredentials,
+  } from '../pairing'
   import { failureOf, inlineProblem, type ProblemKind } from './problems'
   import Bar from './Bar.svelte'
   import QrCode from './QrCode.svelte'
@@ -8,24 +18,69 @@
   let { onlink, onfail, onback }: { onlink: (l: Link) => void; onfail: (k: ProblemKind) => void; onback: () => void } =
     $props()
 
-  let step = $state<1 | 2>(1)
+  // Normal: show code, scan reply. With a hotspot (Android app): show Wi-Fi code first.
+  let stage = $state<'wifi' | 'offer' | 'scan'>('offer')
+  let hotspot = $state<WifiCredentials | null>(null)
+  let canHotspot = $state(false)
+  let startingHotspot = $state(false)
+  let hotspotProblem = $state<string | null>(null)
   let offer = $state<Offer | null>(null)
   let connecting = $state(false)
   let problem = $state<string | null>(null)
   let attempt = $state(0)
   let linked = false
+  let live = true
 
-  $effect(() => {
-    let live = true
-    unlockLocalAddresses()
-      .then(createOffer)
+  const steps = $derived<[number, number]>(
+    hotspot ? [stage === 'wifi' ? 1 : stage === 'offer' ? 2 : 3, 3] : [stage === 'offer' ? 1 : 2, 2],
+  )
+
+  function makeOffer() {
+    offer?.cancel()
+    offer = null
+    createOffer()
       .then((o) => (live ? (offer = o) : o.cancel()))
       .catch((e) => onfail(failureOf(e) as ProblemKind))
+  }
+
+  $effect(() => {
+    wifiCapabilities().then((c) => (canHotspot = c.hotspot))
+    unlockLocalAddresses().then(() => live && makeOffer())
     return () => {
       live = false
-      if (!linked) offer?.cancel()
+      if (!linked) {
+        offer?.cancel()
+        stopWifi()
+      }
     }
   })
+
+  async function makeHotspot() {
+    startingHotspot = true
+    hotspotProblem = null
+    try {
+      hotspot = await startHotspot()
+      offer?.cancel() // made before the hotspot existed, so it lacks the hotspot's address
+      offer = null
+      stage = 'wifi'
+    } catch (e) {
+      hotspotProblem = e instanceof Error ? e.message : String(e)
+    } finally {
+      startingHotspot = false
+    }
+  }
+
+  function joined() {
+    makeOffer()
+    stage = 'offer'
+  }
+
+  function back() {
+    if (connecting) return onback()
+    if (stage === 'scan') stage = 'offer'
+    else if (stage === 'offer' && hotspot) stage = 'wifi'
+    else onback()
+  }
 
   async function answered(text: string) {
     connecting = true
@@ -44,10 +99,25 @@
   }
 </script>
 
-<Bar onback={step === 2 && !connecting ? () => (step = 1) : onback} step={[step, 2]} />
+<Bar onback={back} step={steps} />
 
 <main class="pair">
-  {#if step === 1}
+  {#if stage === 'wifi' && hotspot}
+    <div class="copy">
+      <h1>Let them join your Wi-Fi</h1>
+      <p class="quiet">On the other phone, tap Receive in Stub and scan this, or scan it with the camera app. No internet needed.</p>
+    </div>
+    <div class="slip panel">
+      <QrCode raw payload={toWifiQr(hotspot)} label="Wi-Fi code for the other phone to join your hotspot" />
+      <dl class="creds mono">
+        <dt>Network</dt>
+        <dd>{hotspot.ssid}</dd>
+        <dt>Password</dt>
+        <dd>{hotspot.password || 'none'}</dd>
+      </dl>
+    </div>
+    <button class="btn go wide next" onclick={joined}>They joined. Next</button>
+  {:else if stage === 'offer'}
     <div class="copy">
       <h1>Let them scan this</h1>
       <p class="quiet">On the other device, open Stub and tap Receive.</p>
@@ -59,7 +129,15 @@
         <p class="wait mono" role="status">Making your code</p>
       {/if}
     </div>
-    <button class="btn go wide next" disabled={!offer} onclick={() => (step = 2)}>They scanned it. Next</button>
+    {#if canHotspot && !hotspot}
+      <div class="alt">
+        <button class="link" disabled={startingHotspot} onclick={makeHotspot}>
+          {startingHotspot ? 'Starting hotspot' : 'Not on the same Wi-Fi? Make a hotspot'}
+        </button>
+        {#if hotspotProblem}<p class="problem" role="alert">{hotspotProblem}</p>{/if}
+      </div>
+    {/if}
+    <button class="btn go wide next" disabled={!offer} onclick={() => (stage = 'scan')}>They scanned it. Next</button>
   {:else}
     <div class="copy">
       <h1>Now scan their reply</h1>
@@ -122,6 +200,23 @@
     padding: var(--s3);
     border-left: 4px solid var(--danger);
     font-size: var(--t-sm);
+  }
+  .creds {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--s1) var(--s4);
+    margin: var(--s4) 0 0;
+    font-size: var(--t-sm);
+  }
+  .creds dt {
+    color: var(--ink-2);
+  }
+  .creds dd {
+    margin: 0;
+    word-break: break-all;
+  }
+  .alt .problem {
+    margin-top: var(--s2);
   }
   .next {
     position: sticky;

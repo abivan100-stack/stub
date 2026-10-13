@@ -2,9 +2,10 @@
   import { encode } from 'uqr'
   import { toFrames } from '../pairing'
 
-  let { payload, label }: { payload: string; label: string } = $props()
+  // `raw` shows the text exactly as given (e.g. a standard Wi-Fi QR), with no frame header or text fallback.
+  let { payload, label, raw = false }: { payload: string; label: string; raw?: boolean } = $props()
 
-  const frames = $derived(toFrames(payload))
+  const frames = $derived(raw ? [payload] : toFrames(payload))
   let i = $state(0)
   let copied = $state(false)
 
@@ -42,12 +43,14 @@
   {/if}
 </figure>
 
+{#if !raw}
 <details class="fallback">
   <summary>Can’t scan? Send the code as text</summary>
   <label class="quiet" for="code-out">Copy this, then paste it into the other device.</label>
   <textarea id="code-out" readonly rows="4" data-testid="code-out" onfocus={(e) => e.currentTarget.select()}>{payload}</textarea>
   <button class="btn small" onclick={copy}>{copied ? 'Copied' : 'Copy code'}</button>
 </details>
+{/if}
 
 <style>
   .qr {
