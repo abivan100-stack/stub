@@ -93,6 +93,34 @@ Before the first e2e run, install the browser with `npx playwright install chrom
 
 The site must be served over HTTPS for the camera and the service worker. Users need to open it once online. After that, it runs without a network.
 
+## Android app (Capacitor)
+
+The `android/` folder wraps the same web build in a native app (`com.abivan.stub`) with [Capacitor](https://capacitorjs.com). See [docs/android-app-options.md](docs/android-app-options.md) for why Capacitor and what comes next.
+
+You need JDK 21 and the Android SDK (platform 36, build-tools, platform-tools). Android Studio includes both. Point `android/local.properties` at the SDK with `sdk.dir=...`.
+
+Build a debug APK:
+
+```bash
+npm run build
+```
+
+```bash
+npx cap sync android
+```
+
+```bash
+cd android && ./gradlew assembleDebug
+```
+
+The APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`. Install it with `adb install -r <apk>`, or copy it to the phone and open it.
+
+Inside the app the service worker is skipped, because every file ships in the APK. Known gaps until native plugins land:
+- Save/Open of received files doesn't work yet (Android WebView ignores blob downloads).
+- Transfers pause when the app is in the background.
+
+If Gradle or `sdkmanager` fails with an SSL error behind antivirus HTTPS scanning, set `JAVA_TOOL_OPTIONS=-Djavax.net.ssl.trustStoreType=Windows-ROOT` so Java uses the Windows certificate store.
+
 ## Known limits
 
 - **iOS Safari:** there's no File System Access API, so received files are held in memory. Above a few hundred MB the tab can be killed. Received files are saved through the share/download sheet. Install to the home screen for the most reliable offline start.

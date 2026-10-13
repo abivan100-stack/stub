@@ -5,3 +5,10 @@ test-results
 playwright-report
 
 .vercel
+
+# Android: build outputs and signing secrets never go in git
+*.apk
+*.aab
+*.jks
+*.keystore
+keystore.properties

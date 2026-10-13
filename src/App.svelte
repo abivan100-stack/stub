@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Capacitor } from '@capacitor/core'
   import { registerSW } from 'virtual:pwa-register'
   import type { Link } from './pairing'
   import { Peer } from './transfer'
@@ -16,9 +17,11 @@
   let link = $state.raw<Link | null>(null)
   let peer = $state.raw<Peer | null>(null)
   let problem = $state<ProblemKind>('network')
-  let offlineReady = $state(!!navigator.serviceWorker?.controller)
+  // In the Android app every file ships inside the APK, so it is offline from the first launch.
+  const native = Capacitor.isNativePlatform()
+  let offlineReady = $state(native || !!navigator.serviceWorker?.controller)
 
-  registerSW({ immediate: true, onOfflineReady: () => (offlineReady = true) })
+  if (!native) registerSW({ immediate: true, onOfflineReady: () => (offlineReady = true) })
 
   function linked(l: Link) {
     link = l
