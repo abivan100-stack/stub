@@ -2,7 +2,7 @@
   import { Capacitor } from '@capacitor/core'
   import { registerSW } from 'virtual:pwa-register'
   import type { Link } from './pairing'
-  import { Peer } from './transfer'
+  import { Peer, onShared, takeShared } from './transfer'
   import Home from './ui/Home.svelte'
   import SendFlow from './ui/SendFlow.svelte'
   import ReceiveFlow from './ui/ReceiveFlow.svelte'
@@ -22,6 +22,15 @@
   let offlineReady = $state(native || !!navigator.serviceWorker?.controller)
 
   if (!native) registerSW({ immediate: true, onOfflineReady: () => (offlineReady = true) })
+
+  // Files from Android's share sheet wait here until a connection is open, then go to the Send prompt.
+  let shared = $state.raw<File[]>([])
+  const collectShared = () =>
+    takeShared()
+      .then((f) => f.length && (shared = [...shared, ...f]))
+      .catch((e) => alert(`Couldn't read the shared file. ${e instanceof Error ? e.message : ''}`))
+  collectShared()
+  onShared(collectShared)
 
   function linked(l: Link) {
     link = l
@@ -55,7 +64,13 @@
 </script>
 
 {#if view === 'home'}
-  <Home {offlineReady} onsend={() => (view = 'send')} onreceive={() => (view = 'receive')} />
+  <Home
+    {offlineReady}
+    {shared}
+    onclearshared={() => (shared = [])}
+    onsend={() => (view = 'send')}
+    onreceive={() => (view = 'receive')}
+  />
 {:else if view === 'send'}
   <SendFlow onlink={linked} onfail={fail} onback={home} />
 {:else if view === 'receive'}
@@ -63,7 +78,7 @@
 {:else if view === 'verify' && link}
   <Verify code={link.code} onmatch={() => (view = 'transfer')} onmismatch={() => fail('mismatch')} />
 {:else if view === 'transfer' && peer && link}
-  <Transfer {peer} code={link.code} onleave={home} />
+  <Transfer {peer} code={link.code} {shared} ontookshared={() => (shared = [])} onleave={home} />
 {:else if view === 'problem'}
   <Problem kind={problem} onhome={home} />
 {/if}

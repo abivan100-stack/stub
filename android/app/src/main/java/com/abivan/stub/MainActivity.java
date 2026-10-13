@@ -12,6 +12,7 @@ public class MainActivity extends BridgeActivity {
         // App-local plugins must be registered before the bridge starts.
         registerPlugin(StubFilesPlugin.class);
         registerPlugin(StubTransferPlugin.class);
+        registerPlugin(StubSharePlugin.class);
         super.onCreate(savedInstanceState);
         // The transfer runs in the WebView, so keep its renderer at full priority when Stub is hidden.
         if (Build.VERSION.SDK_INT >= 26) {

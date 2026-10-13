@@ -88,3 +88,37 @@ export function release(): void {
   held = false
   transfer.release().catch(() => {})
 }
+
+// Share sheet: files other apps send to Stub (StubSharePlugin.java).
+interface SharedFile {
+  uri: string
+  name: string
+  type: string
+  size: number
+}
+interface StubShare {
+  take(): Promise<{ files: SharedFile[] }>
+  addListener(event: 'shared', fn: () => void): Promise<{ remove(): Promise<void> }>
+}
+
+const share = registerPlugin<StubShare>('StubShare')
+
+/** Files shared into Stub since the last call, as ordinary File objects. Empty on the web. */
+export async function takeShared(): Promise<File[]> {
+  if (!isNative) return []
+  const { files } = await share.take()
+  // Capacitor serves content:// URIs from its local server, so fetch can read them.
+  // ponytail: each file becomes a Blob before sending; Chromium spills large blobs to disk,
+  // but a native streaming reader is the upgrade if multi-GB shares strain memory.
+  return Promise.all(
+    files.map(async (f) => {
+      const blob = await (await fetch(Capacitor.convertFileSrc(f.uri))).blob()
+      return new File([blob], f.name, { type: f.type || blob.type })
+    }),
+  )
+}
+
+/** Runs `fn` whenever files are shared while Stub is already open. */
+export function onShared(fn: () => void): void {
+  if (isNative) void share.addListener('shared', fn)
+}

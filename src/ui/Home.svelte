@@ -1,5 +1,19 @@
 <script lang="ts">
-  let { onsend, onreceive, offlineReady }: { onsend: () => void; onreceive: () => void; offlineReady: boolean } = $props()
+  import { bytes, plural } from './format'
+
+  let {
+    onsend,
+    onreceive,
+    offlineReady,
+    shared = [],
+    onclearshared,
+  }: {
+    onsend: () => void
+    onreceive: () => void
+    offlineReady: boolean
+    shared?: File[]
+    onclearshared?: () => void
+  } = $props()
 </script>
 
 <main class="home">
@@ -13,6 +27,15 @@
     <p class="lede">
       Phone to phone, or laptop to phone, over the same Wi-Fi or hotspot. No internet, no account, nothing uploaded.
     </p>
+    {#if shared.length}
+      <div class="ready-to-send" role="status">
+        <p>
+          <strong>{plural(shared.length, 'file')}, {bytes(shared.reduce((n, f) => n + f.size, 0))} ready to send.</strong>
+          Tap Send and pair with the other device.
+        </p>
+        <button class="link" onclick={onclearshared}>Clear</button>
+      </div>
+    {/if}
   </section>
 
   <div class="pass">
@@ -89,6 +112,17 @@
   .lede {
     max-width: 34ch;
     color: var(--ink-2);
+  }
+
+  .ready-to-send {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s3);
+    padding: var(--s3) var(--s4);
+    border-left: 4px solid var(--signal);
+    background: var(--slip);
+    font-size: var(--t-sm);
   }
 
   /* One ticket, torn in two. */

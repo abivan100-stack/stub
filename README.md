@@ -121,6 +121,8 @@ Received files are streamed into `Download/Stub` by a small native plugin, [`Stu
 
 While files are moving, a foreground service ([`TransferService.java`](android/app/src/main/java/com/abivan/stub/TransferService.java)) shows a progress notification and holds a CPU wake lock and a Wi-Fi lock, so transfers keep going with the screen off or another app open. The WebView renderer keeps full priority while hidden. On Android 15+ the system allows 6 hours of this per day; after that, transfers continue only while Stub is open.
 
+Stub appears in Android's share sheet for any file type ([`StubSharePlugin.java`](android/app/src/main/java/com/abivan/stub/StubSharePlugin.java)). Shared files wait on the home screen ("3 files ready to send"), then go straight into the Send prompt once the devices are paired.
+
 If Gradle or `sdkmanager` fails with an SSL error behind antivirus HTTPS scanning, set `JAVA_TOOL_OPTIONS=-Djavax.net.ssl.trustStoreType=Windows-ROOT` so Java uses the Windows certificate store.
 
 ## Known limits

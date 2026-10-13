@@ -17,7 +17,13 @@
   import TicketView from './Ticket.svelte'
   import { bytes, plural, spaced, urlFor } from './format'
 
-  let { peer, code, onleave }: { peer: Peer; code: string; onleave: () => void } = $props()
+  let {
+    peer,
+    code,
+    onleave,
+    shared = [],
+    ontookshared,
+  }: { peer: Peer; code: string; onleave: () => void; shared?: File[]; ontookshared?: () => void } = $props()
 
   // Peer mutates plain objects; take a snapshot at most every 80 ms.
   // A timer, not requestAnimationFrame, so a backgrounded tab still catches up.
@@ -40,6 +46,13 @@
   const idle = $derived(shown.length > 0 && shown.every((t) => FINISHED.includes(t.status)))
 
   let staged = $state<File[]>([])
+
+  // Files shared into the Android app go straight to the "Send?" prompt.
+  $effect(() => {
+    if (!shared.length) return
+    staged = [...staged, ...shared]
+    ontookshared?.()
+  })
   let picker = $state<HTMLInputElement>()
   let dragging = $state(false)
 
