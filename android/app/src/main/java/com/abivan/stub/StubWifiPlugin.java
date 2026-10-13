@@ -10,6 +10,7 @@ import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiNetworkSpecifier;
+import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pGroup;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Build;
@@ -91,7 +92,16 @@ public class StubWifiPlugin extends Plugin {
                 @Override
                 public void onStarted(WifiManager.LocalOnlyHotspotReservation reservation) {
                     hotspot = reservation;
+                    // Android stops a local-only hotspot when its app leaves the foreground (e.g. the
+                    // user opens Settings). A foreground service keeps Stub "in use" meanwhile.
+                    holdService();
                     call.resolve(describe(reservation));
+                }
+
+                @Override
+                public void onStopped() {
+                    hotspot = null;
+                    letGoIfIdle();
                 }
 
                 @Override
@@ -116,6 +126,19 @@ public class StubWifiPlugin extends Plugin {
             hotspot.close();
             hotspot = null;
         }
+        letGoIfIdle();
+    }
+
+    private void holdService() {
+        try {
+            TransferService.hold(getContext(), TransferService.REASON_HOTSPOT, null, null, -2);
+        } catch (Exception ignored) {
+            // Android 15's background budget used up: the hotspot still works while Stub is on screen.
+        }
+    }
+
+    private void letGoIfIdle() {
+        if (hotspot == null && !ownsGroup) TransferService.letGo(getContext(), TransferService.REASON_HOTSPOT);
     }
 
     @RequiresApi(26)
@@ -130,6 +153,7 @@ public class StubWifiPlugin extends Plugin {
             int sec = c.getSecurityType();
             // WPA3-only hotspots need "SAE"; transition mode and WPA2 work with "WPA".
             o.put("security", sec == SoftApConfiguration.SECURITY_TYPE_OPEN ? "nopass" : sec == SoftApConfiguration.SECURITY_TYPE_WPA3_SAE ? "SAE" : "WPA");
+            // The band isn't readable by apps (getBand is a system API), so it's left unset here.
         } else {
             WifiConfiguration c = r.getWifiConfiguration();
             o.put("ssid", unquote(c.SSID));
@@ -195,10 +219,11 @@ public class StubWifiPlugin extends Plugin {
 
     @SuppressWarnings("MissingPermission")
     private void create(PluginCall call) {
-        p2p.createGroup(p2pChannel, new WifiP2pManager.ActionListener() {
+        WifiP2pManager.ActionListener done = new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
                 ownsGroup = true;
+                holdService();
                 readGroup(call, 0);
             }
 
@@ -208,7 +233,26 @@ public class StubWifiPlugin extends Plugin {
                     ? "This phone doesn't support Wi-Fi Direct"
                     : "Wi-Fi Direct didn't start. Make sure Wi-Fi is on, then try again");
             }
-        });
+        };
+        if (Build.VERSION.SDK_INT >= 29) {
+            // 2.4 GHz, so every laptop and phone can see it. Name must start with "DIRECT-xy-".
+            WifiP2pConfig config = new WifiP2pConfig.Builder()
+                .setNetworkName("DIRECT-st-Stub-" + randomText(4, "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"))
+                .setPassphrase(randomText(10, "abcdefghijkmnpqrstuvwxyz23456789"))
+                .setGroupOperatingBand(WifiP2pConfig.GROUP_OWNER_BAND_2GHZ)
+                .enablePersistentMode(false)
+                .build();
+            p2p.createGroup(p2pChannel, config, done);
+        } else {
+            p2p.createGroup(p2pChannel, done);
+        }
+    }
+
+    private static String randomText(int n, String alphabet) {
+        java.security.SecureRandom r = new java.security.SecureRandom();
+        StringBuilder b = new StringBuilder(n);
+        for (int i = 0; i < n; i++) b.append(alphabet.charAt(r.nextInt(alphabet.length())));
+        return b.toString();
     }
 
     /** The group's name and password show up a moment after it starts, so poll briefly. */
@@ -220,6 +264,7 @@ public class StubWifiPlugin extends Plugin {
                 o.put("ssid", g.getNetworkName());
                 o.put("password", g.getPassphrase());
                 o.put("security", "WPA");
+                o.put("band", Build.VERSION.SDK_INT >= 29 ? "2.4 GHz" : "");
                 call.resolve(o);
             } else if (attempt < 20) {
                 new Handler(Looper.getMainLooper()).postDelayed(() -> readGroup(call, attempt + 1), 250);
@@ -240,6 +285,7 @@ public class StubWifiPlugin extends Plugin {
             p2p.removeGroup(p2pChannel, null);
             ownsGroup = false;
         }
+        letGoIfIdle();
     }
 
     // --- join ------------------------------------------------------------------------------

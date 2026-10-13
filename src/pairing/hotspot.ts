@@ -20,21 +20,34 @@ export async function wifiCapabilities(): Promise<{ hotspot: boolean; join: bool
 }
 
 /**
- * Makes a network the other phone can join: a local-only hotspot, or, if the phone refuses one
- * (regular hotspot on, no free channel, carrier block), a Wi-Fi Direct group, which phones can
- * join like any Wi-Fi network. If both fail, the hotspot's error is the one worth showing.
+ * Makes a network the other device can join, with no internet and mobile data untouched.
+ * Android 10+: a Wi-Fi Direct group pinned to 2.4 GHz first, because phones may put a local-only
+ * hotspot on 5 or 6 GHz (apps can't choose or even read that band) and many laptops can't see those.
+ * Android 8 and 9: the local-only hotspot first. Either way the other kind is the fallback, and if
+ * both fail the first error is the one shown.
  */
 export async function startHotspot(): Promise<WifiCredentials> {
+  const { join: android10 } = await wifi.capabilities()
+  const [first, second] = android10
+    ? [() => wifi.startDirectGroup(), () => wifi.startHotspot()]
+    : [() => wifi.startHotspot(), () => wifi.startDirectGroup()]
   try {
-    return await wifi.startHotspot()
-  } catch (hotspotError) {
+    return await first()
+  } catch (firstError) {
     try {
-      return await wifi.startDirectGroup()
+      return await second()
     } catch {
-      throw hotspotError
+      throw firstError
     }
   }
 }
+
+/** "Can't see this Wi-Fi?": swap whatever is running for a 2.4 GHz Wi-Fi Direct group. */
+export async function startHotspot24(): Promise<WifiCredentials> {
+  await wifi.stopHotspot().catch(() => {})
+  return wifi.startDirectGroup()
+}
+
 export const joinWifi = (w: WifiCredentials): Promise<{ ssid: string }> => wifi.joinWifi(w)
 
 /** Undo whichever of the two this device did. Safe to call any time. */

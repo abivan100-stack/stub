@@ -4,6 +4,7 @@
     nfcStatus,
     shareByNfc,
     startHotspot,
+    startHotspot24,
     stopWifi,
     toWifiQr,
     unlockLocalAddresses,
@@ -58,6 +59,20 @@
       }
     }
   })
+
+  /** Some laptops and older phones can't see 5/6 GHz: swap to a 2.4 GHz Wi-Fi Direct network. */
+  async function switch24() {
+    startingHotspot = true
+    hotspotProblem = null
+    try {
+      hotspot = await startHotspot24()
+      makeOffer() // new address: the old code would point at the wrong network
+    } catch (e) {
+      hotspotProblem = e instanceof Error ? e.message : String(e)
+    } finally {
+      startingHotspot = false
+    }
+  }
 
   async function makeHotspot() {
     startingHotspot = true
@@ -123,7 +138,17 @@
         <dd>{hotspot.ssid}</dd>
         <dt>Password</dt>
         <dd>{hotspot.password || 'none'}</dd>
+        {#if hotspot.band}
+        <dt>Band</dt>
+        <dd>{hotspot.band}</dd>
+        {/if}
       </dl>
+      {#if !hotspot.ssid.startsWith('DIRECT-')}
+        <button class="link" disabled={startingHotspot} onclick={switch24}>
+          {startingHotspot ? 'Switching' : 'Can’t see this Wi-Fi on the other device? Switch to 2.4 GHz'}
+        </button>
+      {/if}
+      {#if hotspotProblem}<p class="problem" role="alert">{hotspotProblem}</p>{/if}
     </div>
     {#if nfcOn}
       <p class="nfc quiet">Or hold the phones back to back to send the Wi-Fi and the code in one tap.</p>

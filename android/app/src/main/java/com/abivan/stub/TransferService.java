@@ -25,6 +25,35 @@ public class TransferService extends Service {
     static final String EXTRA_TITLE = "title";
     static final String EXTRA_TEXT = "text";
     static final String EXTRA_PERCENT = "percent";
+    // The service stays up while any reason holds it: files moving, or a hotspot other devices rely on.
+    static final String EXTRA_REASON = "reason";
+    static final String ACTION_HOLD = "com.abivan.stub.HOLD";
+    static final String ACTION_LET_GO = "com.abivan.stub.LET_GO";
+    static final String REASON_TRANSFER = "transfer";
+    static final String REASON_HOTSPOT = "hotspot";
+
+    /** Ask the service to stay up for `reason`. Safe to call repeatedly (later calls update the notification). */
+    static void hold(Context c, String reason, String title, String text, int percent) {
+        Intent i = new Intent(c, TransferService.class).setAction(ACTION_HOLD)
+            .putExtra(EXTRA_REASON, reason)
+            .putExtra(EXTRA_TITLE, title)
+            .putExtra(EXTRA_TEXT, text)
+            .putExtra(EXTRA_PERCENT, percent);
+        androidx.core.content.ContextCompat.startForegroundService(c, i);
+    }
+
+    static void letGo(Context c, String reason) {
+        if (!running) return;
+        try {
+            c.startService(new Intent(c, TransferService.class).setAction(ACTION_LET_GO).putExtra(EXTRA_REASON, reason));
+        } catch (Exception ignored) {
+            // App fully in the background with no service: nothing to let go of.
+        }
+    }
+
+    private static volatile boolean running = false;
+    private final java.util.Set<String> reasons = new java.util.HashSet<>();
+    private Intent lastTransfer;
     private static final String CHANNEL = "transfers";
     private static final int ID = 1;
     // Safety net: never hold the locks longer than this, even if JS forgets to call release().
@@ -39,10 +68,25 @@ public class TransferService extends Service {
             stopSelf(); // restarted by the system after a kill: the WebView transfer is gone
             return START_NOT_STICKY;
         }
+        String reason = intent.getStringExtra(EXTRA_REASON);
+        if (reason == null) reason = REASON_TRANSFER;
+        if (ACTION_LET_GO.equals(intent.getAction())) {
+            reasons.remove(reason);
+            if (REASON_TRANSFER.equals(reason)) lastTransfer = null;
+            if (reasons.isEmpty()) {
+                stopSelf();
+                return START_NOT_STICKY;
+            }
+        } else {
+            reasons.add(reason);
+            if (REASON_TRANSFER.equals(reason)) lastTransfer = intent;
+        }
         createChannel();
-        Notification n = notification(intent);
+        // Transfer progress wins; otherwise say the hotspot is on.
+        Notification n = notification(lastTransfer != null ? lastTransfer : hotspotIntent());
         int type = Build.VERSION.SDK_INT >= 29 ? ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC : 0;
         ServiceCompat.startForeground(this, ID, n, type);
+        running = true;
         holdLocks();
         return START_NOT_STICKY;
     }
@@ -53,8 +97,16 @@ public class TransferService extends Service {
         stopSelf();
     }
 
+    private Intent hotspotIntent() {
+        return new Intent()
+            .putExtra(EXTRA_TITLE, "Stub's Wi-Fi is on")
+            .putExtra(EXTRA_TEXT, "Other devices can join until you leave pairing or disconnect")
+            .putExtra(EXTRA_PERCENT, -2);
+    }
+
     @Override
     public void onDestroy() {
+        running = false;
         if (cpu != null && cpu.isHeld()) cpu.release();
         if (wifi != null && wifi.isHeld()) wifi.release();
         super.onDestroy();
@@ -96,7 +148,7 @@ public class TransferService extends Service {
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE);
         if (percent >= 0) b.setProgress(100, percent, false);
-        else b.setProgress(0, 0, true);
+        else if (percent == -1) b.setProgress(0, 0, true); // -2: no progress bar (hotspot only)
         return b.build();
     }
 

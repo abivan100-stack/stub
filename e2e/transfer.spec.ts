@@ -97,7 +97,7 @@ test('a Wi-Fi code from a hotspot shows join-by-hand details on the web', async 
   await page.goto('/')
   await page.getByRole('button', { name: /^Receive/ }).click()
   await pasteCode(page, 'WIFI:T:WPA;S:AndroidShare_4821;P:k3x9q2mp;;')
-  await expect(page.getByText('Join this Wi-Fi in your phone’s settings')).toBeVisible()
+  await expect(page.getByText(/Join this Wi-Fi in this device’s Wi-Fi settings/)).toBeVisible()
   await expect(page.getByText('AndroidShare_4821')).toBeVisible()
   await expect(page.getByText('k3x9q2mp')).toBeVisible()
   // The scanner is ready again for the Stub code.

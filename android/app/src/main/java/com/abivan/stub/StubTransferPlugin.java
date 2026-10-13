@@ -1,7 +1,6 @@
 package com.abivan.stub;
 
 import android.Manifest;
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 
@@ -21,13 +20,10 @@ public class StubTransferPlugin extends Plugin {
     @PluginMethod
     public void keepAlive(PluginCall call) {
         askForNotificationsOnce();
-        Intent i = new Intent(getContext(), TransferService.class)
-            .putExtra(TransferService.EXTRA_TITLE, call.getString("title", "Stub"))
-            .putExtra(TransferService.EXTRA_TEXT, call.getString("text", ""))
-            .putExtra(TransferService.EXTRA_PERCENT, call.getInt("percent", -1));
         try {
             // Repeated calls just update the notification.
-            ContextCompat.startForegroundService(getContext(), i);
+            TransferService.hold(getContext(), TransferService.REASON_TRANSFER,
+                call.getString("title", "Stub"), call.getString("text", ""), call.getInt("percent", -1));
             call.resolve();
         } catch (Exception e) {
             // E.g. Android 15's daily dataSync budget is used up. The transfer still runs while Stub is open.
@@ -37,7 +33,7 @@ public class StubTransferPlugin extends Plugin {
 
     @PluginMethod
     public void release(PluginCall call) {
-        getContext().stopService(new Intent(getContext(), TransferService.class));
+        TransferService.letGo(getContext(), TransferService.REASON_TRANSFER);
         call.resolve();
     }
 

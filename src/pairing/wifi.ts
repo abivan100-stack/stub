@@ -7,6 +7,8 @@ export interface WifiCredentials {
   password: string
   /** "WPA" (WPA/WPA2), "SAE" (WPA3) or "nopass". */
   security: string
+  /** Set when this phone made the network: "2.4 GHz", "5 GHz" or "6 GHz". Not part of the QR code. */
+  band?: string
 }
 
 const escape = (s: string) => s.replace(/([\\;,:"])/g, '\\$1')

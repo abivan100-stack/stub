@@ -116,7 +116,7 @@
     </div>
     {#if joinByHand}
       <div class="slip byhand" role="status">
-        <p>Join this Wi-Fi in your phone’s settings, then scan their Stub code.</p>
+        <p>Join this Wi-Fi in this device’s Wi-Fi settings, then scan their Stub code. If it isn’t listed, ask them to tap “Switch to 2.4 GHz” on their phone.</p>
         <dl class="creds mono">
           <dt>Network</dt>
           <dd>{joinByHand.ssid}</dd>
