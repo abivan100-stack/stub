@@ -7,7 +7,7 @@ After the first visit the app is fully cached by a service worker (fonts and the
 ## How it works
 
 1. **Send** creates an `RTCPeerConnection` with `iceServers: []`, opens a data channel, and waits for ICE gathering to finish, so one code carries everything.
-2. The offer is packed into a QR code. Only the per-session values are kept (ICE ufrag/pwd, DTLS fingerprint, setup role, mid, host candidates); the rest of the SDP is rebuilt from a fixed template on the other side. The packed text is deflated with `CompressionStream('deflate-raw')` and base64url-encoded. A typical offer is under 320 characters, which fits one QR code.
+2. The offer is packed into a QR code. Only the per-session values are kept (ICE ufrag/pwd, DTLS fingerprint, setup role, mid, host candidates); the rest of the SDP is rebuilt from a fixed template on the other side. These are packed as raw bytes (the fingerprint as 32 bytes, each address as 4 or 16 bytes plus a 2-byte port) and base64url-encoded. A typical offer is about 100 characters, so the QR code is small and scans easily. Compression doesn't help here: the values are random keys, so the byte packing does the work.
 3. If the payload is longer than 320 characters, the QR cycles through numbered frames (`2/3:...`). The scanner collects them in any order.
 4. **Receive** scans the offer, makes an answer, and shows it as a QR code. Send scans that, and the channel opens.
 5. Both screens show a 6-digit code derived from both DTLS fingerprints. If they differ, someone else is in the middle, and the user taps "Doesn't match".
@@ -28,7 +28,7 @@ Every QR has a text fallback (copy, then paste) for when a camera isn't availabl
 src/
   pairing/     offline WebRTC signalling over QR. No UI imports.
     session.ts   createOffer / acceptOffer → Link { channel, code, close }
-    sdp.ts       SDP pack + deflate + base64url
+    sdp.ts       SDP to ~100-character code and back
     frames.ts    multi-frame QR split/collect
     code.ts      verification code from DTLS fingerprints
   transfer/    file protocol over any RTCDataChannel. No UI imports.

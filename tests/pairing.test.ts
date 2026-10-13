@@ -3,7 +3,7 @@ import { decodeDescription, encodeDescription, readFields, writeSdp } from '../s
 import { FrameCollector, toFrames } from '../src/pairing/frames'
 import { verificationCode } from '../src/pairing/code'
 
-// A real Chrome data-channel offer, trimmed of nothing.
+// A real-shaped Chrome data-channel offer: two IPv4 hosts, an IPv6 host, an mDNS host, and a TCP candidate.
 const OFFER = [
   'v=0',
   'o=- 4611731400430051336 2 IN IP4 127.0.0.1',
@@ -17,6 +17,8 @@ const OFFER = [
   'a=candidate:1467250027 1 udp 2122260223 192.168.43.12 53201 typ host generation 0 network-id 1 network-cost 10',
   'a=candidate:3018375211 1 tcp 1518280447 192.168.43.12 9 typ host tcptype active generation 0 network-id 1',
   'a=candidate:2999745851 1 udp 2122194687 10.0.0.5 62187 typ host generation 0 network-id 2',
+  'a=candidate:842163049 1 udp 2122129151 2001:db8::1:ab 55012 typ host generation 0 network-id 3',
+  'a=candidate:1510613869 1 udp 2122063615 3f2a8c41-7b6e-4d09-9a1f-0c5e2b7d8e33.local 49152 typ host generation 0',
   'a=ice-ufrag:x7Yl',
   'a=ice-pwd:Wq9dN1n2g4s8b0C6f2JpQ3vR',
   'a=ice-options:trickle',
@@ -35,17 +37,32 @@ describe('SDP compression', () => {
     expect(s).toMatch(/a=ice-pwd:Wq9dN1n2g4s8b0C6f2JpQ3vR/)
     expect(s).toMatch(/a=fingerprint:sha-256 5B:9C:0A:18:.*:7D:28\r\n/)
     expect(s).toMatch(/192\.168\.43\.12 53201 typ host\r\n/)
-    expect(s.match(/a=candidate/g)).toHaveLength(2)
+    expect(s.match(/a=candidate/g)).toHaveLength(4)
   })
 
-  it('round-trips and stays small enough for one QR code', async () => {
+  it('round-trips every address form', async () => {
     const payload = await encodeDescription({ type: 'offer', sdp: OFFER })
     expect(payload[0]).toBe('o')
     expect(payload).toMatch(/^[A-Za-z0-9_-]+$/)
-    expect(payload.length).toBeLessThan(320)
+    expect(payload.length).toBeLessThan(160) // 4 candidates
     const back = await decodeDescription(payload)
-    expect(back).toEqual({ type: 'offer', sdp: writeSdp(readFields(OFFER)) })
-    expect(readFields(back.sdp!)).toEqual(readFields(OFFER))
+    expect(back.type).toBe('offer')
+    expect(readFields(back.sdp!)).toEqual({
+      ...readFields(OFFER),
+      candidates: [
+        { addr: '192.168.43.12', port: 53201 },
+        { addr: '10.0.0.5', port: 62187 },
+        { addr: '2001:db8:0:0:0:0:1:ab', port: 55012 },
+        { addr: '3f2a8c41-7b6e-4d09-9a1f-0c5e2b7d8e33.local', port: 49152 },
+      ],
+    })
+  })
+
+  it('packs a typical one-candidate offer into about 100 characters', async () => {
+    const one = OFFER.replace(/^a=candidate:(?!1467250027).*\r\n/gm, '')
+    expect(one.match(/a=candidate/g)).toHaveLength(1)
+    const payload = await encodeDescription({ type: 'offer', sdp: one })
+    expect(payload.length).toBeLessThanOrEqual(100)
   })
 
   it('rejects text that is not a pairing code', async () => {
