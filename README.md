@@ -1,105 +1,74 @@
 # Stub
 
-Send files between two devices on the same Wi-Fi or hotspot. They pair by scanning QR codes and talk directly over WebRTC. No server, no internet, nothing uploaded.
+Pass files straight between two devices on the same Wi-Fi or hotspot. No internet, no account, no server, nothing uploaded.
 
-After the first visit the app is fully cached by a service worker (fonts and the QR scanner worker included), so it works on a router with no uplink, or on a phone hotspot with mobile data turned off.
+- **Website:** https://stub-black.vercel.app. Open it once while online; after that it works offline.
+- **Android app:** build it from `android/` (see [Android app](#android-app)). It adds a hotspot of its own, background transfers, the share sheet, NFC tap-to-pair and "Connect a laptop".
+
+The website and the app work together: any pair of them can connect, in either direction.
+
+## Ways to pair
+
+| Situation | What to do |
+| --- | --- |
+| Both on the same Wi-Fi | One taps **Send**, the other **Receive**, and they scan each other's QR code. |
+| No shared Wi-Fi (Android app) | On the Send screen tap **Make a hotspot**. Stub makes its own network (no internet, mobile data untouched) and shows a Wi-Fi QR code. The other device joins by scanning it with Stub or a camera app. |
+| Phone (app) + laptop | On the phone tap **Connect a laptop**. It shows a 7-character code like `7KQ-2MX4`. On the laptop, open the Stub website and type it into **Got a code from a phone?**. No scanning, no PIN, no address. |
+| Laptop has never opened the Stub site | On the phone's Connect-a-laptop screen, open **Type an address instead**. Type the address (like `192.168.0.177:8080`) into the laptop's address bar, then the PIN. The phone serves Stub itself. |
+| Two Android phones with NFC | Hold them back to back instead of scanning the first code. |
+| A camera won't scan | Tap the QR code to show it full screen, or use **Can't scan? Send the code as text** (about 100 characters to copy and paste). |
+
+After any of these, both screens show the same 6 digits. Tap **Match** on both: if they differ, another device got in the middle, so tap **Doesn't match**.
 
 ## How it works
 
-1. **Send** creates an `RTCPeerConnection` with `iceServers: []`, opens a data channel, and waits for ICE gathering to finish, so one code carries everything.
-2. The offer is packed into a QR code. Only the per-session values are kept (ICE ufrag/pwd, DTLS fingerprint, setup role, mid, host candidates); the rest of the SDP is rebuilt from a fixed template on the other side. These are packed as raw bytes (the fingerprint as 32 bytes, each address as 4 or 16 bytes plus a 2-byte port) and base64url-encoded. A typical offer is about 100 characters, so the QR code is small and scans easily. Compression doesn't help here: the values are random keys, so the byte packing does the work.
-3. If the payload is longer than 320 characters, the QR cycles through numbered frames (`2/3:...`). The scanner collects them in any order.
-4. **Receive** scans the offer, makes an answer, and shows it as a QR code. Send scans that, and the channel opens.
-5. Both screens show a 6-digit code derived from both DTLS fingerprints. If they differ, someone else is in the middle, and the user taps "Doesn't match".
+### Pairing
 
-Every QR has a text fallback (copy, then paste) for when a camera isn't available.
+1. **Send** creates an `RTCPeerConnection` with `iceServers: []` (no STUN or TURN; only the local link), opens a data channel, and waits for ICE gathering to finish, so one code carries everything.
+2. Only the values that change per session are kept: ICE ufrag and password, the DTLS fingerprint, setup role, mid and host candidates. They're packed as bytes (fingerprint 32 bytes, each address 4 or 16 bytes plus a 2-byte port) and the rest of the SDP is rebuilt from a fixed template on the other side ([`sdp.ts`](src/pairing/sdp.ts)).
+   - **QR form:** base32 behind an uppercase type letter. Every character is in QR's alphanumeric set, so the code has fewer, larger squares.
+   - **Text form:** base64url, about 100 characters.
+3. A code too long for one QR cycles through numbered frames (`2/3:…`), and the scanner collects them in any order. A code that fits is shown as is.
+4. **Receive** scans the offer, makes an answer and shows it as a QR code. Send scans that, and the channel opens.
+5. Both screens show a 6-digit code derived from both DTLS fingerprints ([`code.ts`](src/pairing/code.ts)).
+
+Before making a code, Stub asks for the camera. Without camera permission, browsers hide local IP addresses behind `.local` names that hotspots often can't resolve. If pairing fails, the error screen's **Details for troubleshooting** lists the addresses each side tried.
 
 ### File transfer
 
-- Batches go out as an offer (names, sizes, types). The receiver accepts or declines.
-- Files go one at a time per direction, in 64 KB chunks over an ordered data channel. Sending pauses above 4 MB `bufferedAmount` and resumes at `bufferedamountlow` (1 MB).
-- Each chunk frame is `[u32 index][SHA-256][data]`. The receiver checks every chunk, then checks a final manifest hash over all chunk hashes. Only then does the ticket get stamped "Verified".
-- On Chromium, a batch over 100 MB asks for a folder (`showDirectoryPicker`), and files are streamed straight to disk. Elsewhere, files are held in memory as Blobs, with a warning when a file is over 500 MB.
-- Each file has progress, live speed, ETA, cancel and retry, in either direction.
+- Batches go out as an offer (names, sizes, types), which the receiver accepts or declines.
+- Files go one at a time per direction (both directions can run at once), in 64 KB chunks over an ordered data channel. Sending pauses above 4 MB `bufferedAmount` and resumes at `bufferedamountlow` (1 MB).
+- Each chunk frame is `[u32 index][SHA-256][data]`. The receiver checks every chunk, then a final hash over all chunk hashes. Only then is the ticket stamped **Verified**.
+- Where received files go:
+  - **Android app:** `Download/Stub`.
+  - **Chromium:** a batch over 100 MB is streamed to a folder you pick.
+  - **Elsewhere:** held in memory, with a warning above 500 MB.
+- Each file has progress, live speed, ETA, cancel and retry.
+- Pages served over plain `http` (the laptop path) have no WebCrypto, so Stub falls back to a built-in SHA-256 ([`sha256.ts`](src/sha256.ts)).
 
-## Code layout
+## Android app
 
-```
-src/
-  pairing/     offline WebRTC signalling over QR. No UI imports.
-    session.ts   createOffer / acceptOffer → Link { channel, code, close }
-    sdp.ts       SDP to ~100-character code and back
-    frames.ts    multi-frame QR split/collect
-    code.ts      verification code from DTLS fingerprints
-  transfer/    file protocol over any RTCDataChannel. No UI imports.
-    peer.ts      Peer: offers, queue, chunks, verification, cancel/retry
-    chunk.ts     chunk framing and hashing
-    sink.ts      where received bytes go (memory or a folder on disk)
-  ui/          Svelte screens and components
-  App.svelte   screen state: home → pair → verify → transfer
-```
+[Capacitor](https://capacitorjs.com) wraps the same web build in a native app, `com.abivan.stub`. Every file ships in the APK, so it's offline from the first launch. [docs/android-app-options.md](docs/android-app-options.md) explains why Capacitor over a TWA, Tauri, Flutter or React Native.
 
-`pairing/` hands back a `Link` with a data channel. A native transport (Capacitor or Tauri) can return the same shape and `transfer/` will not notice.
+| Feature | How | Code |
+| --- | --- | --- |
+| Save received files | Streamed into `Download/Stub` through MediaStore (Android 10+, no storage permission). Android 7 to 9 use Stub's own folder. **Open** hands a file to another app. | [`StubFilesPlugin.java`](android/app/src/main/java/com/abivan/stub/StubFilesPlugin.java) |
+| Background transfers | A foreground service with a progress notification holds a CPU wake lock and a Wi-Fi lock, so transfers keep going with the screen off. Android 15+ allows 6 hours a day of this. | [`TransferService.java`](android/app/src/main/java/com/abivan/stub/TransferService.java) |
+| Share sheet | **Share → Stub** from any app. Files wait on the home screen, then go into the Send prompt once paired. | [`StubSharePlugin.java`](android/app/src/main/java/com/abivan/stub/StubSharePlugin.java) |
+| Make a hotspot | Android 10+: a Wi-Fi Direct network pinned to 2.4 GHz, which every laptop and phone can see. Fallback, and Android 8 and 9: a local-only hotspot. **Can't see this Wi-Fi? Switch to 2.4 GHz** swaps it. The service keeps the network up while you're in Settings. | [`StubWifiPlugin.java`](android/app/src/main/java/com/abivan/stub/StubWifiPlugin.java) |
+| Join from a Wi-Fi QR | Android 10+ joins automatically after one system prompt. Older versions, and the website, show the name and password. | same |
+| NFC tap-to-pair | The sending phone poses as an NFC tag holding its code (plus Wi-Fi details); the receiver reads it. The reply goes back by QR. | [`StubTagService.java`](android/app/src/main/java/com/abivan/stub/StubTagService.java), [`StubNfcPlugin.java`](android/app/src/main/java/com/abivan/stub/StubNfcPlugin.java) |
+| Connect a laptop | A small web server on port 8080 serves Stub and relays pairing codes, guarded by a 4-digit PIN. Five wrong PINs lock it, one device only, and it stops once paired. The 7-character code packs address, port and PIN; the PIN travels in the URL `#fragment`, which never leaves the browser. | [`StubHostServer.java`](android/app/src/main/java/com/abivan/stub/StubHostServer.java), [`directcode.ts`](src/pairing/directcode.ts) |
+| Readable QR | Full brightness and no screen timeout while a code is showing. | [`StubScreenPlugin.java`](android/app/src/main/java/com/abivan/stub/StubScreenPlugin.java) |
 
-## Design
+Permissions are asked when first needed:
+- **Camera:** for scanning.
+- **Notifications:** for transfer progress.
+- **Nearby devices** (Android 13+), or **Location** (Android 8 to 12): for the hotspot and Wi-Fi Direct.
 
-The direction is a printed ticket: card stock, black ink, one safety-orange signal.
+### Build the APK
 
-| Token | Light | Dark | Use |
-| --- | --- | --- | --- |
-| `--page` | `#e6e3da` | `#191a18` | background |
-| `--slip` | `#f4f2ec` | `#232421` | ticket surfaces |
-| `--ink` | `#1b1a17` | `#e9e5db` | text and rules |
-| `--ink-2` | `#57544c` | `#a8a499` | secondary text (AA on page) |
-| `--signal` | `#ff5b14` | `#ff6a2b` | primary action, live progress (ink text on it) |
-| `--stamp` | `#b83a08` | `#ff8a50` | the "Verified" stamp |
-
-- Type: Archivo (variable width) for headings, set narrow at 62 to 70% width, and DM Mono for sizes, speeds, codes and ticket numbers. Both are self-hosted in `src/assets/fonts` (SIL OFL).
-- Shape: 3 px corners, 1.5 px rules, perforated tear lines with punched notches. No shadows, except the hard offset edge under buttons that they press into.
-- Motion: the progress gauge moves in small steps, the verification digits print in one at a time, and the stamp lands when a file is verified. All of it is off under `prefers-reduced-motion`.
-
-## Develop
-
-```bash
-npm install
-npm run dev
-```
-
-`npm run dev` serves HTTPS with a self-signed certificate on all interfaces, because the camera needs a secure context. Vite prints a `Network:` URL like `https://192.168.1.20:5173`. Open that on each phone and accept the certificate warning.
-
-`npm run dev:http` serves plain HTTP on `localhost:5174`. localhost counts as a secure context, so this is fine on one machine and is what the e2e test uses.
-
-```bash
-npm test           # Vitest: SDP packing, frames, verification code, chunking, hashing, Peer protocol
-npm run check      # svelte-check + TypeScript strict
-npm run test:e2e   # Playwright: two browser contexts pair and transfer a file end to end
-```
-
-Before the first e2e run, install the browser with `npx playwright install chromium`.
-
-## Testing on two phones
-
-1. Turn on a hotspot on phone A, turn its mobile data **off**, and join it from phone B (or a laptop).
-2. Load the dev URL (or the deployed site) on both while you still have a network, so the service worker caches the app. The home screen shows "Works offline" once it has.
-3. On A tap Send, on B tap Receive, and scan each other's codes. Check that both show the same six digits.
-4. Send something large (over 1 GB) and something small, cancel one mid-way, retry it, and send a file back from B to A.
-
-## Deploy
-
-`npm run build` writes a static site to `dist/`. Any static host works.
-
-- **Cloudflare Pages:** build command `npm run build`, output directory `dist`.
-- **Netlify:** the same settings, or `npx netlify deploy --dir=dist --prod`.
-
-The site must be served over HTTPS for the camera and the service worker. Users need to open it once online. After that, it runs without a network.
-
-## Android app (Capacitor)
-
-The `android/` folder wraps the same web build in a native app (`com.abivan.stub`) with [Capacitor](https://capacitorjs.com). See [docs/android-app-options.md](docs/android-app-options.md) for why Capacitor and what comes next.
-
-You need JDK 21 and the Android SDK (platform 36, build-tools, platform-tools). Android Studio includes both. Set `ANDROID_HOME` to the SDK folder and `JAVA_HOME` to JDK 21.
-
-Build a debug APK:
+You need JDK 21 and the Android SDK (platform 36, build-tools, platform-tools); Android Studio includes both. Set `ANDROID_HOME` to the SDK folder and `JAVA_HOME` to JDK 21.
 
 ```bash
 npm run build
@@ -113,36 +82,95 @@ npx cap sync android
 cd android && ./gradlew assembleDebug
 ```
 
-The APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`. Install it with `adb install -r <apk>`, or copy it to the phone and open it.
+The APK lands in `android/app/build/outputs/apk/debug/app-debug.apk`. Copy it to the phone and open it, or run `adb install -r <apk>`.
 
-Inside the app the service worker is skipped, because every file ships in the APK.
-
-Received files are streamed into `Download/Stub` by a small native plugin, [`StubFilesPlugin.java`](android/app/src/main/java/com/abivan/stub/StubFilesPlugin.java), through MediaStore (Android 10+, no storage permission needed). On Android 7 to 9 they go to Stub's own app folder instead. Open hands the file to another app.
-
-While files are moving, a foreground service ([`TransferService.java`](android/app/src/main/java/com/abivan/stub/TransferService.java)) shows a progress notification and holds a CPU wake lock and a Wi-Fi lock, so transfers keep going with the screen off or another app open. The WebView renderer keeps full priority while hidden. On Android 15+ the system allows 6 hours of this per day; after that, transfers continue only while Stub is open.
-
-Stub appears in Android's share sheet for any file type ([`StubSharePlugin.java`](android/app/src/main/java/com/abivan/stub/StubSharePlugin.java)). Shared files wait on the home screen ("3 files ready to send"), then go straight into the Send prompt once the devices are paired.
-
-No shared Wi-Fi? On the Send screen, the Android app offers "Make a hotspot" ([`StubWifiPlugin.java`](android/app/src/main/java/com/abivan/stub/StubWifiPlugin.java)). It starts a local-only hotspot (no internet, mobile data untouched) and shows a standard Wi-Fi QR code. The other phone joins it by scanning with Stub (Android 10+ joins automatically after a system prompt) or with its camera app; the web version shows the name and password to join by hand. The pairing codes are made after the hotspot is up, so they carry its address. Android 8+ is needed to make a hotspot; Android 13+ asks for "Nearby devices", older versions ask for location. If the phone won't start a local-only hotspot (its regular hotspot is on, no free channel, or a carrier block), Stub creates a Wi-Fi Direct group instead and shows that in the same Wi-Fi QR code. On Android 10+ the Wi-Fi Direct group, pinned to 2.4 GHz, is actually the first choice: phones may put a local-only hotspot on 5 or 6 GHz (apps can neither choose nor read that band), and many laptops and older phones can't see those. If the network still doesn't show up, "Can't see this Wi-Fi? Switch to 2.4 GHz" swaps it. While Stub's network is up, its foreground service keeps it alive, so it doesn't vanish when you switch to Settings or the screen locks.
-
-With NFC switched on, phones can pair by tapping instead of scanning the first code. The sending phone poses as an NFC tag that holds its code, plus the Wi-Fi details when it made a hotspot ([`StubTagService.java`](android/app/src/main/java/com/abivan/stub/StubTagService.java)), and the receiving phone reads it ([`StubNfcPlugin.java`](android/app/src/main/java/com/abivan/stub/StubNfcPlugin.java)). The reply still goes back by QR code. Some phones only answer NFC reads while unlocked.
-
-**Connect a laptop with a short code.** The phone's "Connect a laptop" screen shows a 7-character code such as `7KQ-2MX4`, which packs the phone's local address, port and PIN ([`src/pairing/directcode.ts`](src/pairing/directcode.ts)). On the laptop, type it into "Got a code from a phone?" on the Stub website: the browser jumps to the phone's page with the PIN filled in (it travels in the `#fragment`, which is never sent over the network) and pairs on its own. This needs the laptop to have opened the Stub site before (a hotspot has no internet); otherwise type the plain address such as `192.168.0.177:8080` (no `http://` needed) and the PIN.
-
-**Connect a laptop without scanning.** On the Android app's home screen, "Connect a laptop" starts a small web server on the phone ([`StubHostServer.java`](android/app/src/main/java/com/abivan/stub/StubHostServer.java), port 8080) and shows its address and a 4-digit PIN. The laptop types the address (for example `http://192.168.0.177:8080`) into any browser, gets Stub straight from the phone (no internet, no prior visit to the website), and enters the PIN; the pairing codes travel over that connection. Five wrong PINs lock it, only one device can pair, and the server stops as soon as the devices are paired. The 6-digit check still follows. A page served over plain http has no WebCrypto, so Stub falls back to a built-in SHA-256 ([`src/sha256.ts`](src/sha256.ts)).
-
-Android unit tests (JVM, no device needed):
-
-```bash
-cd android && ./gradlew testDebugUnitTest
-```
+For a release build, create a signing key and keep it out of git. `*.jks`, `*.keystore` and `keystore.properties` are already ignored. [docs/android-app-options.md](docs/android-app-options.md#signing-keys) covers keys, Play App Signing and Google's developer verification.
 
 If Gradle or `sdkmanager` fails with an SSL error behind antivirus HTTPS scanning, set `JAVA_TOOL_OPTIONS=-Djavax.net.ssl.trustStoreType=Windows-ROOT` so Java uses the Windows certificate store.
 
+## Code layout
+
+```
+src/
+  pairing/        how two devices find each other. No UI imports.
+    session.ts      createOffer / acceptOffer → Link { channel, code, close }
+    sdp.ts          SDP ↔ ~100-character code (text) or base32 (QR)
+    frames.ts       multi-frame QR split and collect
+    code.ts         6-digit verification code from DTLS fingerprints
+    wifi.ts         standard Wi-Fi QR format
+    hotspot.ts      make or join a network (Android app)
+    nfc.ts          tap-to-pair (Android app)
+    host.ts         Connect a laptop: phone side and laptop side
+    directcode.ts   address + port + PIN ↔ 7-character code
+  transfer/       file protocol over any RTCDataChannel. No UI imports.
+    peer.ts         offers, queue, chunks, verification, cancel and retry
+    chunk.ts        chunk framing and hashing
+    sink.ts         where received bytes go (memory or a folder)
+    native.ts       Android: Download/Stub, background service, share sheet
+  sha256.ts       WebCrypto, or plain JS where there is none
+  ui/             Svelte screens
+  App.svelte      home → pair → verify → transfer
+android/app/src/main/java/com/abivan/stub/   the native plugins listed above
+```
+
+`pairing/` hands back a `Link` with a data channel, and `transfer/` only needs that. A new transport (Wi-Fi Direct sockets, Nearby Connections) can return the same shape without touching the UI.
+
+## Design
+
+A printed ticket: card stock, black ink, one safety-orange signal.
+
+| Token | Light | Dark | Use |
+| --- | --- | --- | --- |
+| `--page` | `#e6e3da` | `#191a18` | background |
+| `--slip` | `#f4f2ec` | `#232421` | ticket surfaces |
+| `--ink` | `#1b1a17` | `#e9e5db` | text and rules |
+| `--ink-2` | `#57544c` | `#a8a499` | secondary text (AA on page) |
+| `--signal` | `#ff5b14` | `#ff6a2b` | primary action, live progress (ink text on it) |
+| `--stamp` | `#b83a08` | `#ff8a50` | the "Verified" stamp |
+
+- **Type:** Archivo (variable width), set narrow, for headings; DM Mono for sizes, speeds, codes and ticket numbers. Both are self-hosted in `src/assets/fonts` (SIL OFL).
+- **Shape:** 3 px corners, 1.5 px rules, perforated tear lines with punched notches. No shadows except the hard edge buttons press into.
+- **Motion:** the progress gauge steps, the verification digits print in, and the stamp lands. All of it is off under `prefers-reduced-motion`.
+
+## Develop and test
+
+```bash
+npm install
+```
+
+```bash
+npm run dev
+```
+
+`npm run dev` serves HTTPS with a self-signed certificate on all interfaces, because the camera needs a secure context. Open the printed `Network:` URL on each phone and accept the warning. `npm run dev:http` serves plain HTTP on `localhost:5174` for one machine and the e2e tests.
+
+| Command | What it checks |
+| --- | --- |
+| `npm test` | Vitest: SDP packing, base32, frames, verification code, Wi-Fi QR, short codes, SHA-256, chunking, the Peer protocol, the native sink and the hotspot fallback order |
+| `npm run check` | svelte-check and strict TypeScript |
+| `npm run test:e2e` | Playwright: two browsers pair and send verified files; the Wi-Fi QR path; the error details; a laptop pairing through the phone over plain `http`; the short phone code |
+| `cd android && ./gradlew testDebugUnitTest` | JVM tests: the NFC tag protocol, and the phone's web server (PIN, lockout, one device, safe paths) |
+
+Before the first e2e run, install the browser with `npx playwright install chromium`.
+
+### On real devices
+
+1. Open the website (or install the APK) on both devices while online. The home screen shows **Works offline** once the website is cached.
+2. On the hotspot phone, turn mobile data **off**.
+3. Pair each way: same Wi-Fi, **Make a hotspot**, **Connect a laptop** with the short code, and NFC.
+4. Send something over 1 GB with the screen off. Cancel one file mid-way, retry it, and send a file back the other way.
+
+## Deploy
+
+`npm run build` writes a static site to `dist/`. The live site is on Vercel, connected to this repo: every push to `main` deploys to https://stub-black.vercel.app. Any static host works (Cloudflare Pages, Netlify: build `npm run build`, output `dist`). It must be served over HTTPS for the camera and the service worker.
+
+The website updates on every push, but an installed APK doesn't. Keep both on the same commit when the pairing format changes.
+
 ## Known limits
 
-- **iOS Safari:** there's no File System Access API, so received files are held in memory. Above a few hundred MB the tab can be killed. Received files are saved through the share/download sheet. Install to the home screen for the most reliable offline start.
-- **Firefox and Safari** keep received files in memory for the same reason. Chromium-based browsers stream large batches to a folder.
-- **Local addresses:** browsers hide LAN IPs behind `.local` mDNS names until the page has camera permission, and some hotspots drop mDNS. Stub asks for the camera before making the offer for this reason. If the camera is denied and pairing times out, allow camera access and try again.
-- **Client isolation:** guest and public Wi-Fi often stop devices from seeing each other. A phone hotspot or a home router works.
-- **One file at a time per direction.** Both directions can run at once.
+- **Not yet tested on real phones:** the Android features above are covered by builds, lint and JVM tests, but WebRTC over Stub's hotspot or Wi-Fi Direct network, NFC tags and the phone's web server haven't run on hardware yet.
+- **Browsers keep received files in memory** except Chromium's folder streaming. iOS Safari can kill the tab above a few hundred MB.
+- **Guest and public Wi-Fi** often keep devices apart. Use **Make a hotspot**, or a phone or home hotspot.
+- **The Connect-a-laptop short code** needs the laptop to have opened the Stub website before, because a hotspot has no internet. The typed address works without that.
+- **Sharing very large files into the app** copies each one into memory before sending.
+- **Background time:** Android 15+ allows about 6 hours a day of background transfer; after that, transfers continue only while Stub is open.
