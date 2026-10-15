@@ -13,21 +13,15 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.security.SecureRandom;
 import java.util.Collections;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 
 /**
- * "Connect a laptop": runs StubHostServer on port 8080 with a fresh 4-digit PIN. When the laptop
- * posts its pairing code, JS gets an "offer" event, answers it, and calls answer() to reply.
+ * "Connect another device": runs StubHostServer on port 8080 with a fresh 4-digit PIN. When a device
+ * enters the PIN, JS gets a "guest" event with the session token and joins the relay as the phone.
  */
 @CapacitorPlugin(name = "StubHost")
 public class StubHostPlugin extends Plugin {
     private static final int PORT = 8080;
     private StubHostServer server;
-    private final Map<String, CompletableFuture<String>> waiting = new ConcurrentHashMap<>();
 
     @PluginMethod
     public void start(PluginCall call) {
@@ -40,7 +34,11 @@ public class StubHostPlugin extends Plugin {
                 } catch (FileNotFoundException e) {
                     return null;
                 }
-            }, this::askJs);
+            }, token -> {
+                JSObject e = new JSObject();
+                e.put("token", token);
+                notifyListeners("guest", e, true);
+            });
             server.start();
             JSObject r = new JSObject();
             r.put("port", server.port());
@@ -61,20 +59,6 @@ public class StubHostPlugin extends Plugin {
     }
 
     @PluginMethod
-    public void answer(PluginCall call) {
-        CompletableFuture<String> f = waiting.remove(call.getString("id", ""));
-        if (f != null) f.complete(call.getString("answer", ""));
-        call.resolve();
-    }
-
-    @PluginMethod
-    public void refuse(PluginCall call) {
-        CompletableFuture<String> f = waiting.remove(call.getString("id", ""));
-        if (f != null) f.completeExceptionally(new IllegalStateException(call.getString("message", "The phone refused")));
-        call.resolve();
-    }
-
-    @PluginMethod
     public void stop(PluginCall call) {
         stopQuietly();
         call.resolve();
@@ -89,26 +73,6 @@ public class StubHostPlugin extends Plugin {
         if (server != null) {
             server.stop();
             server = null;
-        }
-        for (CompletableFuture<String> f : waiting.values()) f.cancel(true);
-        waiting.clear();
-    }
-
-    /** Runs on the server's thread: hand the offer to JS and wait for its answer. */
-    private String askJs(String offer) throws Exception {
-        String id = UUID.randomUUID().toString();
-        CompletableFuture<String> f = new CompletableFuture<>();
-        waiting.put(id, f);
-        JSObject e = new JSObject();
-        e.put("id", id);
-        e.put("offer", offer);
-        notifyListeners("offer", e, true);
-        try {
-            return f.get(30, TimeUnit.SECONDS);
-        } catch (java.util.concurrent.ExecutionException ex) {
-            throw (Exception) ex.getCause();
-        } finally {
-            waiting.remove(id);
         }
     }
 

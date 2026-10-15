@@ -3,6 +3,8 @@
     acceptOffer,
     joinWifi,
     nfcStatus,
+    pairThroughPhone,
+    parseConnectUrl,
     parseWifiQr,
     readByNfc,
     unlockLocalAddresses,
@@ -12,6 +14,7 @@
     type Link,
     type WifiCredentials,
   } from '../pairing'
+  import { isNative } from '../transfer'
   import { detailOf, failureOf, inlineProblem, type ProblemKind } from './problems'
   import Bar from './Bar.svelte'
   import QrCode from './QrCode.svelte'
@@ -57,6 +60,8 @@
     problem = null
     const wifi = parseWifiQr(text)
     if (wifi) return useWifi(wifi)
+    const phone = parseConnectUrl(text)
+    if (phone) return connectToPhone(text, phone)
     reading = 'Reading code'
     try {
       // With camera permission, the reply carries real LAN addresses instead of ".local" names
@@ -76,6 +81,27 @@
       const kind = failureOf(e)
       problem = inlineProblem(kind, 'offer')
       if (!problem) return onfail(kind as ProblemKind, detailOf(e))
+      attempt++
+    } finally {
+      reading = null
+    }
+  }
+
+  /** A phone's connect link: pair through that phone's relay (works on its hotspot, no WebRTC). */
+  async function connectToPhone(url: string, phone: { base: string; pin: string }) {
+    // The website (https) can't call a phone over http, so open the page the phone serves instead.
+    if (location.protocol === 'https:' && !isNative) {
+      location.href = url
+      return
+    }
+    reading = 'Connecting to the phone'
+    try {
+      const l = await pairThroughPhone(phone.pin, phone.base)
+      if (gone) return l.close()
+      linked = true
+      onlink(l)
+    } catch (e) {
+      problem = e instanceof Error ? e.message : String(e)
       attempt++
     } finally {
       reading = null

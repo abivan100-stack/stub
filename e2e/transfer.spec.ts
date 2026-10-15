@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page, type WebSocketRoute } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { networkInterfaces } from 'node:os'
 
@@ -132,42 +132,56 @@ const lan = Object.values(networkInterfaces())
   .flat()
   .find((a) => a && a.family === 'IPv4' && !a.internal)?.address
 
-test('a laptop pairs through the phone with a PIN, without scanning', async ({ browser }) => {
+test('a laptop pairs through the phone with a PIN, then files go through the phone relay', async ({ browser }) => {
   test.skip(!lan, 'needs a LAN address')
-  const phone = await (await browser.newContext({ permissions: ['camera'] })).newPage()
+  const phone = await (await browser.newContext()).newPage()
   const laptop = await (await browser.newContext()).newPage()
 
-  // Stand-in for the phone's StubHostServer: check the PIN, let the phone page answer the offer.
-  await laptop.route('**/__stub/host', (r) => r.fulfill({ body: 'stub' }))
-  await laptop.route('**/__stub/pair', async (r) => {
-    const [pin, offer] = r.request().postData()!.split('\n')
-    if (pin !== '4821') return r.fulfill({ status: 403, body: "That PIN doesn't match. Check the phone." })
-    await phone.goto('/')
-    await phone.getByRole('button', { name: /^Receive/ }).click()
-    await pasteCode(phone, offer!)
-    await expect(phone.getByText('Waiting for them to scan')).toBeVisible()
-    await r.fulfill({ body: await copyCode(phone) })
-  })
+  // Stand-in for the phone's StubHostServer: one token for the right PIN, and a relay that passes
+  // every WebSocket message between the two ends (StubHostServerTest covers the real one).
+  const TOKEN = '0123456789abcdef0123456789abcdef'
+  const ends: WebSocketRoute[] = []
+  const waiting: { from: WebSocketRoute; msg: string | Buffer }[] = []
+  for (const page of [phone, laptop]) {
+    await page.route('**/__stub/host', (r) => r.fulfill({ body: 'stub' }))
+    await page.route('**/__stub/pair', (r) =>
+      r.request().postData() === '4821'
+        ? r.fulfill({ body: TOKEN })
+        : r.fulfill({ status: 403, body: "That PIN doesn't match. Check the phone." }),
+    )
+    await page.routeWebSocket(/\/__stub\/ws\?role=guest&token=0123456789abcdef0123456789abcdef$/, (ws) => {
+      ends.push(ws)
+      ws.onMessage((msg) => {
+        const other = ends.find((e) => e !== ws)
+        if (other) other.send(msg)
+        else waiting.push({ from: ws, msg })
+      })
+      for (const w of waiting.splice(0)) (ends.find((e) => e !== w.from) ?? w.from).send(w.msg)
+    })
+  }
 
+  // "Phone": the app's own page joining its relay, here via the auto-PIN link.
+  await phone.goto('/#pin=4821')
+  await expect(phone.getByRole('heading', { name: 'Check the code' })).toBeVisible()
+
+  // Laptop: a real insecure page (no WebCrypto), PIN typed by hand.
   await laptop.goto(`http://${lan}:5174/`)
   expect(await laptop.evaluate(() => isSecureContext)).toBe(false)
   await expect(laptop.getByRole('heading', { name: 'Enter the PIN on the phone' })).toBeVisible()
-
   await laptop.getByLabel('PIN').fill('1234')
   await laptop.getByRole('button', { name: 'Connect' }).click()
   await expect(laptop.getByText("That PIN doesn't match. Check the phone.")).toBeVisible()
-
   await laptop.getByLabel('PIN').fill('4821')
   await laptop.getByRole('button', { name: 'Connect' }).click()
 
   const code = laptop.locator('.sr-only', { hasText: 'Your code is' })
-  await expect(code).toBeAttached({ timeout: 20_000 })
+  await expect(code).toBeAttached()
   await expect(phone.locator('.sr-only', { hasText: 'Your code is' })).toHaveText((await code.textContent())!)
   await laptop.getByRole('button', { name: 'Match', exact: true }).click()
   await phone.getByRole('button', { name: 'Match', exact: true }).click()
 
-  // The laptop hashes every chunk with the JS SHA-256 fallback; the phone checks with WebCrypto.
-  const data = Buffer.alloc(300_000)
+  // 1.2 MB: many chunks through the relay. The laptop hashes with the JS SHA-256 fallback.
+  const data = Buffer.alloc(1_200_000)
   for (let i = 0; i < data.length; i++) data[i] = (i * 13 + (i >> 8)) & 0xff
   await laptop.getByTestId('file-input').setInputFiles([{ name: 'plan.bin', mimeType: 'application/octet-stream', buffer: data }])
   await laptop.getByRole('button', { name: 'Send', exact: true }).click()

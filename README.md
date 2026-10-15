@@ -12,9 +12,9 @@ The website and the app work together: any pair of them can connect, in either d
 | Situation | What to do |
 | --- | --- |
 | Both on the same Wi-Fi | One taps **Send**, the other **Receive**, and they scan each other's QR code. |
-| No shared Wi-Fi (Android app) | On the Send screen tap **Make a hotspot**. Stub makes its own network (no internet, mobile data untouched) and shows a Wi-Fi QR code. The other device joins by scanning it with Stub or a camera app. |
-| Phone (app) + laptop | On the phone tap **Connect a laptop**. It shows a 7-character code like `7KQ-2MX4`. On the laptop, open the Stub website and type it into **Got a code from a phone?**. No scanning, no PIN, no address. |
-| Laptop has never opened the Stub site | On the phone's Connect-a-laptop screen, open **Type an address instead**. Type the address (like `192.168.0.177:8080`) into the laptop's address bar, then the PIN. The phone serves Stub itself. |
+| No shared Wi-Fi, or a phone is the hotspot (Android app) | On the phone tap **Connect another device**, then **Make a hotspot** (or, on the Send screen, **Connect through this phone**). The other device scans the Wi-Fi QR code to join, then the connect QR code, with Stub's Receive or any camera app. |
+| Phone (app) + laptop | On the phone tap **Connect another device**. It shows a 7-character code like `7KQ-2MX4`. On the laptop, open the Stub website and type it into **Got a code from a phone?**. |
+| Laptop has never opened the Stub site | On the phone's Connect screen, open **Type an address instead**. Type the address (like `192.168.0.177:8080`) into the laptop's address bar, then the PIN. The phone serves Stub itself. |
 | Two Android phones with NFC | Hold them back to back instead of scanning the first code. |
 | A camera won't scan | Tap the QR code to show it full screen, or use **Can't scan? Send the code as text** (about 100 characters to copy and paste). |
 
@@ -31,6 +31,8 @@ After any of these, both screens show the same 6 digits. Tap **Match** on both: 
 3. A code too long for one QR cycles through numbered frames (`2/3:…`), and the scanner collects them in any order. A code that fits is shown as is.
 4. **Receive** scans the offer, makes an answer and shows it as a QR code. Send scans that, and the channel opens.
 5. Both screens show a 6-digit code derived from both DTLS fingerprints ([`code.ts`](src/pairing/code.ts)).
+
+**When a phone is the hotspot**, WebRTC can't be used: Android's WebView only uses networks that Android's ConnectivityManager knows about, and a network the phone broadcasts (its regular hotspot, Stub's local-only hotspot, or a Wi-Fi Direct group) isn't one. So everything paired through **Connect another device** goes through the phone instead. Its server ([`StubHostServer.java`](android/app/src/main/java/com/abivan/stub/StubHostServer.java)) issues a session token for the right PIN, and both devices open a WebSocket to `/__stub/ws`, which passes frames between them. [`relay.ts`](src/pairing/relay.ts) makes that WebSocket look like a data channel, so the transfer protocol is unchanged. The 6-digit check comes from the session token. The traffic is protected by the hotspot's WPA2 rather than WebRTC's DTLS.
 
 Before making a code, Stub asks for the camera. Without camera permission, browsers hide local IP addresses behind `.local` names that hotspots often can't resolve. If pairing fails, the error screen's **Details for troubleshooting** lists the addresses each side tried.
 
@@ -58,7 +60,7 @@ Before making a code, Stub asks for the camera. Without camera permission, brows
 | Make a hotspot | Android 10+: a Wi-Fi Direct network pinned to 2.4 GHz, which every laptop and phone can see. Fallback, and Android 8 and 9: a local-only hotspot. **Can't see this Wi-Fi? Switch to 2.4 GHz** swaps it. The service keeps the network up while you're in Settings. | [`StubWifiPlugin.java`](android/app/src/main/java/com/abivan/stub/StubWifiPlugin.java) |
 | Join from a Wi-Fi QR | Android 10+ joins automatically after one system prompt. Older versions, and the website, show the name and password. | same |
 | NFC tap-to-pair | The sending phone poses as an NFC tag holding its code (plus Wi-Fi details); the receiver reads it. The reply goes back by QR. | [`StubTagService.java`](android/app/src/main/java/com/abivan/stub/StubTagService.java), [`StubNfcPlugin.java`](android/app/src/main/java/com/abivan/stub/StubNfcPlugin.java) |
-| Connect a laptop | A small web server on port 8080 serves Stub and relays pairing codes, guarded by a 4-digit PIN. Five wrong PINs lock it, one device only, and it stops once paired. The 7-character code packs address, port and PIN; the PIN travels in the URL `#fragment`, which never leaves the browser. | [`StubHostServer.java`](android/app/src/main/java/com/abivan/stub/StubHostServer.java), [`directcode.ts`](src/pairing/directcode.ts) |
+| Connect another device | A small server on port 8080 serves Stub, checks a 4-digit PIN, and relays the transfer over WebSocket, so it works on any network the phone is on, including its own hotspot. Five wrong PINs lock it, one device only, and it stops taking new devices once paired. The connect QR and the 7-character code both carry address, port and PIN; the PIN travels in the URL `#fragment`, which never leaves the browser. | [`StubHostServer.java`](android/app/src/main/java/com/abivan/stub/StubHostServer.java), [`relay.ts`](src/pairing/relay.ts), [`directcode.ts`](src/pairing/directcode.ts) |
 | Readable QR | Full brightness and no screen timeout while a code is showing. | [`StubScreenPlugin.java`](android/app/src/main/java/com/abivan/stub/StubScreenPlugin.java) |
 
 Permissions are asked when first needed:
@@ -100,7 +102,8 @@ src/
     wifi.ts         standard Wi-Fi QR format
     hotspot.ts      make or join a network (Android app)
     nfc.ts          tap-to-pair (Android app)
-    host.ts         Connect a laptop: phone side and laptop side
+    host.ts         Connect another device: phone side and guest side
+    relay.ts        WebSocket through the phone, shaped like a data channel
     directcode.ts   address + port + PIN ↔ 7-character code
   transfer/       file protocol over any RTCDataChannel. No UI imports.
     peer.ts         offers, queue, chunks, verification, cancel and retry
@@ -149,7 +152,7 @@ npm run dev
 | `npm test` | Vitest: SDP packing, base32, frames, verification code, Wi-Fi QR, short codes, SHA-256, chunking, the Peer protocol, the native sink and the hotspot fallback order |
 | `npm run check` | svelte-check and strict TypeScript |
 | `npm run test:e2e` | Playwright: two browsers pair and send verified files; the Wi-Fi QR path; the error details; a laptop pairing through the phone over plain `http`; the short phone code |
-| `cd android && ./gradlew testDebugUnitTest` | JVM tests: the NFC tag protocol, and the phone's web server (PIN, lockout, one device, safe paths) |
+| `cd android && ./gradlew testDebugUnitTest` | JVM tests: the NFC tag protocol, and the phone's server (PIN, lockout, one device, safe paths, WebSocket handshake, relaying 64 KB frames both ways, ping, close, wrong tokens) |
 
 Before the first e2e run, install the browser with `npx playwright install chromium`.
 
@@ -168,7 +171,8 @@ The website updates on every push, but an installed APK doesn't. Keep both on th
 
 ## Known limits
 
-- **Not yet tested on real phones:** the Android features above are covered by builds, lint and JVM tests, but WebRTC over Stub's hotspot or Wi-Fi Direct network, NFC tags and the phone's web server haven't run on hardware yet.
+- **Not yet tested on real phones:** the Android features above are covered by builds, lint and JVM tests, but the phone relay over a hotspot, NFC tags and Wi-Fi Direct haven't run on hardware yet. Pairing on a shared Wi-Fi has.
+- **When a phone is the hotspot, pair with Connect another device.** The QR scan pairing (Send/Receive) uses WebRTC, which doesn't work from the phone that runs the hotspot.
 - **Browsers keep received files in memory** except Chromium's folder streaming. iOS Safari can kill the tab above a few hundred MB.
 - **Guest and public Wi-Fi** often keep devices apart. Use **Make a hotspot**, or a phone or home hotspot.
 - **The Connect-a-laptop short code** needs the laptop to have opened the Stub website before, because a hotspot has no internet. The typed address works without that.

@@ -94,8 +94,8 @@
   {/if}
   {#if onhost}
     <button class="laptop" onclick={onhost}>
-      <span>Connect a laptop</span>
-      <span class="quiet">Type an address and a PIN instead of scanning</span>
+      <span>Connect another device</span>
+      <span class="quiet">Laptop or phone: no scanning, works on this phone’s hotspot</span>
     </button>
   {/if}
 

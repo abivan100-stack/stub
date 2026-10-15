@@ -20,6 +20,7 @@
   let peer = $state.raw<Peer | null>(null)
   let problem = $state<ProblemKind>('network')
   let problemDetail = $state('')
+  let hostWithHotspot = $state(false)
   // In the Android app every file ships inside the APK, so it is offline from the first launch.
   const native = Capacitor.isNativePlatform()
   let offlineReady = $state(native || !!navigator.serviceWorker?.controller)
@@ -78,15 +79,20 @@
     onclearshared={() => (shared = [])}
     onsend={() => (view = 'send')}
     onreceive={() => (view = 'receive')}
-    onhost={native ? () => (view = 'host') : undefined}
+    onhost={native ? () => ((hostWithHotspot = false), (view = 'host')) : undefined}
     codeEntry={!native}
   />
 {:else if view === 'host'}
-  <HostFlow onlink={linked} onfail={fail} onback={home} />
+  <HostFlow onlink={linked} onfail={fail} onback={home} autoHotspot={hostWithHotspot} />
 {:else if view === 'remote'}
   <RemotePair onlink={linked} onfail={fail} onback={home} />
 {:else if view === 'send'}
-  <SendFlow onlink={linked} onfail={fail} onback={home} />
+  <SendFlow
+    onlink={linked}
+    onfail={fail}
+    onback={home}
+    onhotspot={native ? () => ((hostWithHotspot = true), (view = 'host')) : undefined}
+  />
 {:else if view === 'receive'}
   <ReceiveFlow onlink={linked} onfail={fail} onback={home} />
 {:else if view === 'verify' && link}

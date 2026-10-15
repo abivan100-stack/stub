@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { createOffer, pairThroughPhone, PinError, type Link, type Offer } from '../pairing'
-  import { detailOf, failureOf, inlineProblem, type ProblemKind } from './problems'
+  import { pairThroughPhone, PinError, type Link } from '../pairing'
+  import type { ProblemKind } from './problems'
   import Bar from './Bar.svelte'
 
   let {
@@ -30,23 +30,15 @@
     if (pin.length !== 4 || busy) return
     busy = true
     problem = null
-    let offer: Offer | null = null
     try {
-      offer = await createOffer()
-      const answer = await pairThroughPhone(pin, offer.payload)
-      onlink(await offer.complete(answer))
+      onlink(await pairThroughPhone(pin))
     } catch (err) {
-      offer?.cancel()
       busy = false
-      if (err instanceof PinError || !(err instanceof Error && 'kind' in err)) {
-        problem = err instanceof Error ? err.message : String(err)
+      problem = err instanceof Error ? err.message : String(err)
+      if (err instanceof PinError) {
         pin = ''
         input?.focus()
-        return
       }
-      const kind = failureOf(err)
-      problem = inlineProblem(kind, 'answer')
-      if (!problem) onfail(kind as ProblemKind, detailOf(err))
     }
   }
 </script>
