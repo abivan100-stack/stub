@@ -16,7 +16,7 @@ import java.util.Collections;
 
 /**
  * "Connect another device": runs StubHostServer on port 8080 with a fresh 4-digit PIN. When a device
- * enters the PIN, JS gets a "guest" event with the session token and joins the relay as the phone.
+ * enters the PIN and its relay socket opens, JS gets a "guest" event with the session token and joins the relay as the phone.
  */
 @CapacitorPlugin(name = "StubHost")
 public class StubHostPlugin extends Plugin {

@@ -2,6 +2,7 @@ package com.abivan.stub;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.BufferedInputStream;
@@ -100,6 +101,9 @@ public class StubHostServerTest {
         Reply ok = request("POST", "/__stub/pair", "4821");
         assertEquals(200, ok.status);
         assertTrue(ok.body.matches("[0-9a-f]{32}"));
+        // The phone hears nothing until this device has opened its side of the relay.
+        assertNull(guests.poll(300, TimeUnit.MILLISECONDS));
+        new Ws(server.port(), "role=guest&token=" + ok.body);
         assertEquals(ok.body, guests.poll(2, TimeUnit.SECONDS));
 
         // One device per session: a second one can't take over.

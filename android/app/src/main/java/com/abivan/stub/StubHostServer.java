@@ -37,7 +37,7 @@ public class StubHostServer {
     }
 
     public interface Pairing {
-        /** A device entered the right PIN; this phone's page should connect to the relay with `token`. */
+        /** A device entered the right PIN and opened its relay socket; this phone's page should connect to the relay with `token`. */
         void guest(String token);
     }
 
@@ -186,7 +186,6 @@ public class StubHostServer {
             token = randomToken();
             issued = token;
         }
-        pairing.guest(issued);
         send(c, 200, "text/plain; charset=utf-8", bytes(issued));
     }
 
@@ -216,6 +215,9 @@ public class StubHostServer {
         out.flush();
         c.setSoTimeout(0); // a transfer can sit idle while the user picks files
         c.setTcpNoDelay(true);
+        // Tell the phone only now, so its screen shows "Check the code" once this device is really
+        // linked, not when the PIN matched (the other device's socket can still fail after that).
+        if (!phone) pairing.guest(got);
 
         Socket other;
         synchronized (this) {
