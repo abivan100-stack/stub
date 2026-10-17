@@ -59,7 +59,9 @@
         <span>{eta(t.size - t.bytes, t.rate)}</span>
       </p>
     {/if}
-    <p class="status" class:bad={t.status === 'failed'} aria-live="polite">{status}</p>
+    <!-- When done, the stamp says it; the line stays for screen readers. -->
+    <p class="status" class:bad={t.status === 'failed'} class:sr-only={t.status === 'done'} aria-live="polite">{status}</p>
+  {#if t.status === 'done'}<span class="stamp" aria-hidden="true">Verified</span>{/if}
   </div>
 
   <div class="tear" aria-hidden="true"></div>
@@ -77,7 +79,6 @@
     {/if}
   </div>
 
-  {#if t.status === 'done'}<span class="stamp" aria-hidden="true">Verified</span>{/if}
 </article>
 
 <style>
@@ -86,15 +87,19 @@
     position: relative;
     display: grid;
     grid-template-rows: 1fr auto auto;
+    grid-template-columns: minmax(0, 1fr); /* a long file name ellipsizes instead of widening the ticket */
     background: var(--slip);
     border: var(--line) solid var(--rule);
     border-radius: var(--radius);
   }
   .main {
+    position: relative;
     display: grid;
     gap: var(--s2);
     padding: var(--s4);
     min-width: 0;
+    /* The stamp lands from 1.9x: keep it on the ticket, not past the page edge. */
+    overflow: hidden;
   }
   .meta {
     display: flex;
@@ -217,7 +222,7 @@
   @container (min-width: 34rem) {
     .ticket {
       grid-template-rows: none;
-      grid-template-columns: 1fr auto 11rem;
+      grid-template-columns: minmax(0, 1fr) auto 11rem;
     }
     .main {
       padding: var(--s4) var(--s5);
@@ -246,7 +251,7 @@
       padding: var(--s4);
     }
     .stamp {
-      right: calc(11rem + var(--s5));
+      right: var(--s5);
     }
   }
 </style>

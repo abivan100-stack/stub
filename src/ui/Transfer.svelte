@@ -119,7 +119,7 @@
 
 <Bar>
   {#if connected}
-    <span class="link-state">Connected <span class="mono">{spaced(code)}</span></span>
+    <span class="link-state">Connected <span class="mono code" title="Verification code">{spaced(code)}</span></span>
   {/if}
   <button class="link" onclick={onleave}>{connected ? 'Disconnect' : 'Home'}</button>
 </Bar>
@@ -236,7 +236,29 @@
 
 <style>
   .link-state {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s2);
     font-size: var(--t-sm);
+  }
+  /* A live dot: the link is up. */
+  .link-state::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--signal);
+    animation: live 2.4s ease-in-out infinite;
+  }
+  @keyframes live {
+    50% {
+      opacity: 0.35;
+    }
+  }
+  .link-state .code {
+    padding-left: var(--s2);
+    border-left: 1px solid var(--rule-soft);
+    color: var(--ink-2);
   }
   .transfer {
     display: grid;
@@ -292,6 +314,7 @@
     margin: 0;
     padding: 0;
     display: grid;
+    grid-template-columns: minmax(0, 1fr); /* long file names ellipsize instead of widening the page */
     gap: var(--s4);
   }
   .empty {
@@ -352,6 +375,7 @@
   .hint {
     display: none;
     text-align: center;
+    max-width: none; /* the global 60ch cap would push it off centre */
     font-size: var(--t-sm);
   }
   @media (hover: hover) and (pointer: fine) {

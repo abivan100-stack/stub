@@ -233,6 +233,7 @@
   .status {
     font-size: var(--t-sm);
     text-align: center;
+    max-width: none; /* the global 60ch cap would push it off centre */
   }
   .creds {
     display: grid;
@@ -255,5 +256,6 @@
   }
   .alt {
     text-align: center;
+    max-width: none; /* the global 60ch cap would push it off centre */
   }
 </style>

@@ -32,6 +32,13 @@ Open questions / ideas not started:
 
 ## Recent changes (newest first)
 
+- Front-end polish:
+  - The file queue no longer widens the page on phones (the stamp sits inside the ticket's top section).
+  - The repeated "Verified" line is hidden (it stays for screen readers).
+  - The header shows a live dot and a labelled code.
+  - Each screen slides in.
+  - Centred hint text stays centred.
+  - Troubleshooting IPs no longer split mid-number.
 - `README` + this file: documented the relay fixes, the hotspot order and how APK updates work.
 - `34f0079` Make a hotspot: local-only hotspot first, Wi-Fi Direct as fallback; switch buttons both ways (`hotspot.ts` `switchHotspot`, `HostFlow.svelte`).
 - `6316d75` Phone shows the 6-digit code only after the guest's WebSocket opens (`StubHostServer.relay` calls `pairing.guest`, not `pair`).

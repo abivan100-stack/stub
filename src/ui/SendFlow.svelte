@@ -161,6 +161,7 @@
   .nfc {
     font-size: var(--t-sm);
     text-align: center;
+    max-width: none; /* the global 60ch cap would push it off centre */
   }
   .next {
     position: sticky;

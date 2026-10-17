@@ -105,6 +105,7 @@
   }
   .tap {
     text-align: center;
+    max-width: none; /* the global 60ch cap would push it off centre */
     font-size: var(--t-xs);
   }
   /* Always dark-on-light, whatever the theme: that is what scanners read best. */
@@ -145,6 +146,7 @@
   }
   figcaption {
     text-align: center;
+    max-width: none; /* the global 60ch cap would push it off centre */
     font-size: var(--t-xs);
   }
   .fallback {

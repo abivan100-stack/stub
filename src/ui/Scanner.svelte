@@ -139,12 +139,14 @@
     padding: var(--s6);
     color: #e9e5db;
     text-align: center;
+    max-width: none; /* the global 60ch cap would push it off centre */
     font-size: var(--t-sm);
   }
   .count {
     min-height: 1.5em;
     margin: var(--s2) auto 0;
     text-align: center;
+    max-width: none; /* the global 60ch cap would push it off centre */
     font-size: var(--t-xs);
   }
   .fallback {

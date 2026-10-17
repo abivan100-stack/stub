@@ -52,6 +52,7 @@
   .code {
     margin: 0 auto;
     text-align: center;
+    max-width: none; /* the global 60ch cap would push it off centre */
     font-size: clamp(3rem, 15vw, 4.5rem);
     font-weight: 500;
     line-height: 1;

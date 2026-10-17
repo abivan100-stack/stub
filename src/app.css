@@ -279,6 +279,18 @@ input[type='text'] {
   resize: vertical;
 }
 
+/* Each screen is a new <main>: it slides up a little as it arrives. */
+main {
+  /* backwards, not both: a held transform would trap the full-screen QR (position: fixed) inside main */
+  animation: arrive 240ms cubic-bezier(0.2, 0, 0, 1) backwards;
+}
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

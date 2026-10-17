@@ -48,7 +48,7 @@
     margin: var(--s2) 0 0;
     font-size: var(--t-xs);
     white-space: pre-wrap;
-    word-break: break-all;
+    overflow-wrap: anywhere; /* wrap between addresses; only split one that can't fit a line */
   }
   h1 {
     font-size: var(--t-xl);
