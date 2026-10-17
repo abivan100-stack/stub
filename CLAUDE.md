@@ -32,6 +32,7 @@ Open questions / ideas not started:
 
 ## Recent changes (newest first)
 
+- Loading screen: a ticket prints (wordmark + 10-step gauge), then tears away. It's about 2 s, inline in `index.html` (`#splash`), and `main.ts` tears it at 1.6 s.
 - Front-end polish:
   - The file queue no longer widens the page on phones (the stamp sits inside the ticket's top section).
   - The repeated "Verified" line is hidden (it stays for screen readers).

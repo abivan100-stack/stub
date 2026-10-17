@@ -2,4 +2,15 @@ import { mount } from 'svelte'
 import './app.css'
 import App from './App.svelte'
 
-export default mount(App, { target: document.getElementById('app')! })
+const app = mount(App, { target: document.getElementById('app')! })
+
+// The loading ticket (index.html) prints for about 1.6 s, then tears away: about 2 s in all.
+const splash = document.getElementById('splash')
+if (splash) {
+  setTimeout(() => {
+    splash.classList.add('torn')
+    setTimeout(() => splash.remove(), 600)
+  }, Math.max(0, 1600 - performance.now()))
+}
+
+export default app

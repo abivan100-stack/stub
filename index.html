@@ -9,9 +9,171 @@
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <title>Stub</title>
+    <!-- The loading ticket. Inline, so it shows before any script or stylesheet arrives. -->
+    <style>
+      #splash {
+        --sp-page: #e6e3da;
+        --sp-slip: #f4f2ec;
+        --sp-ink: #1b1a17;
+        --sp-soft: #b9b5aa;
+        --sp-signal: #ff5b14;
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: grid;
+        place-items: center;
+        background: var(--sp-page);
+        color: var(--sp-ink);
+        transition: background-color 360ms ease 120ms;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) #splash {
+          --sp-page: #191a18;
+          --sp-slip: #232421;
+          --sp-ink: #e9e5db;
+          --sp-soft: #4a4a45;
+          --sp-signal: #ff6a2b;
+        }
+      }
+      :root[data-theme='dark'] #splash {
+        --sp-page: #191a18;
+        --sp-slip: #232421;
+        --sp-ink: #e9e5db;
+        --sp-soft: #4a4a45;
+        --sp-signal: #ff6a2b;
+      }
+      #splash .sp-ticket {
+        width: min(17rem, 76vw);
+        animation: sp-in 420ms cubic-bezier(0.2, 0, 0, 1) both;
+      }
+      #splash .sp-half {
+        position: relative;
+        background: var(--sp-slip);
+        border: 1.5px solid var(--sp-ink);
+        transition: transform 420ms cubic-bezier(0.5, 0, 0.75, 0), opacity 300ms ease 120ms;
+      }
+      #splash .sp-top {
+        display: grid;
+        gap: 10px;
+        padding: 22px 22px 18px;
+        border-bottom: 0;
+        border-radius: 3px 3px 0 0;
+      }
+      #splash .sp-bottom {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 22px 14px;
+        border-top: 2px dotted var(--sp-soft);
+        border-radius: 0 0 3px 3px;
+        font: 500 11px/1 'DM Mono', ui-monospace, monospace;
+        letter-spacing: 0.08em;
+      }
+      /* Punched notches on the tear line. */
+      #splash .sp-bottom::before,
+      #splash .sp-bottom::after {
+        content: '';
+        position: absolute;
+        top: -11px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--sp-page);
+        border: 1.5px solid var(--sp-ink);
+      }
+      #splash .sp-bottom::before {
+        left: -11.5px;
+        clip-path: inset(0 0 0 50%);
+      }
+      #splash .sp-bottom::after {
+        right: -11.5px;
+        clip-path: inset(0 50% 0 0);
+      }
+      #splash .sp-mark {
+        font: 800 3.4rem/0.85 'Archivo', 'Arial Narrow', sans-serif;
+        font-stretch: 62%;
+        letter-spacing: -0.02em;
+        animation: sp-stretch 900ms cubic-bezier(0.3, 0, 0, 1) 150ms both;
+      }
+      #splash .sp-gauge {
+        display: grid;
+        grid-template-columns: repeat(10, 1fr);
+        gap: 3px;
+        height: 12px;
+      }
+      #splash .sp-gauge i {
+        border: 1.5px solid var(--sp-ink);
+        background: var(--sp-signal);
+        clip-path: inset(0 100% 0 0);
+        animation: sp-fill 110ms steps(2, end) both;
+      }
+      #splash .sp-gauge i:nth-child(1) { animation-delay: 300ms; }
+      #splash .sp-gauge i:nth-child(2) { animation-delay: 420ms; }
+      #splash .sp-gauge i:nth-child(3) { animation-delay: 540ms; }
+      #splash .sp-gauge i:nth-child(4) { animation-delay: 660ms; }
+      #splash .sp-gauge i:nth-child(5) { animation-delay: 780ms; }
+      #splash .sp-gauge i:nth-child(6) { animation-delay: 900ms; }
+      #splash .sp-gauge i:nth-child(7) { animation-delay: 1020ms; }
+      #splash .sp-gauge i:nth-child(8) { animation-delay: 1140ms; }
+      #splash .sp-gauge i:nth-child(9) { animation-delay: 1260ms; }
+      #splash .sp-gauge i:nth-child(10) { animation-delay: 1380ms; }
+      /* Torn: the two halves part and the desk fades through to the app. */
+      #splash.torn {
+        background-color: transparent;
+        pointer-events: none;
+      }
+      #splash.torn .sp-top {
+        transform: translateY(-40vh) rotate(-4deg);
+        opacity: 0;
+      }
+      #splash.torn .sp-bottom {
+        transform: translateY(40vh) rotate(3deg);
+        opacity: 0;
+      }
+      @keyframes sp-in {
+        from {
+          opacity: 0;
+          transform: translateY(14px) scale(0.97);
+        }
+      }
+      @keyframes sp-stretch {
+        from {
+          font-stretch: 100%;
+          opacity: 0;
+        }
+      }
+      @keyframes sp-fill {
+        to {
+          clip-path: inset(0 0 0 0);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #splash *,
+        #splash *::before,
+        #splash *::after {
+          animation-duration: 1ms !important;
+          animation-delay: 0ms !important;
+          transition-duration: 1ms !important;
+        }
+        #splash {
+          transition: opacity 200ms;
+        }
+        #splash.torn {
+          opacity: 0;
+        }
+      }
+    </style>
   </head>
   <body>
     <div id="app"></div>
+    <div id="splash" role="status" aria-label="Loading Stub">
+      <div class="sp-ticket" aria-hidden="true">
+        <div class="sp-half sp-top">
+          <span class="sp-mark">Stub</span>
+          <span class="sp-gauge"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+        </div>
+        <div class="sp-half sp-bottom"><span>ADMIT ONE</span><span>OFFLINE</span></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
