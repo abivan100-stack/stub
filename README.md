@@ -135,7 +135,14 @@ A printed ticket: card stock, black ink, one safety-orange signal.
 
 - **Type:** Archivo (variable width), set narrow, for headings; DM Mono for sizes, speeds, codes and ticket numbers. Both are self-hosted in `src/assets/fonts` (SIL OFL).
 - **Shape:** 3 px corners, 1.5 px rules, perforated tear lines with punched notches. No shadows except the hard edge buttons press into.
-- **Motion:** the progress gauge steps, the verification digits print in, and the stamp lands. All of it is off under `prefers-reduced-motion`.
+- **Motion:**
+  - A loading ticket prints its gauge, then tears to reveal the app (about 2 s).
+  - Screen sections arrive in a short stagger.
+  - New tickets print in from the top.
+  - The progress gauge steps, the verification digits print in, and the VERIFIED and VOID stamps land.
+  - Expandable sections ease open, and buttons lift under a mouse.
+  - All of it is off under `prefers-reduced-motion`.
+- **Theme:** Auto, Light or Dark from the switch on Home. The new colours grow as a circle from the switch (View Transitions, where supported).
 
 ## Develop and test
 

@@ -10,7 +10,9 @@
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <title>Stub</title>
     <script>
+      // Screens hold their entrance until the loading ticket tears (src/main.ts).
       // The theme picked on Home (src/ui/theme.ts), applied before first paint so dark never flashes light.
+      document.documentElement.classList.add('splashing')
       try {
         var t = localStorage.getItem('stub-theme')
         if (t === 'light' || t === 'dark') {

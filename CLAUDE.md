@@ -32,6 +32,11 @@ Open questions / ideas not started:
 
 ## Recent changes (newest first)
 
+- Smooth animations:
+  - Staggered section entrance (`main > *` in `app.css`), held by the `.splashing` class until the loading ticket tears.
+  - Tickets print in (`issue`), and the VOID stamp lands.
+  - Expandable sections (`<details>`) ease open (`interpolate-size`).
+  - Buttons lift on hover.
 - Theme switch on Home: Auto / Light / Dark.
   - The choice is saved in `localStorage` as `stub-theme` and applied before first paint by the inline script in `index.html`.
   - It switches with a circular View Transition reveal (`src/ui/theme.ts`).

@@ -9,6 +9,7 @@ const splash = document.getElementById('splash')
 if (splash) {
   setTimeout(() => {
     splash.classList.add('torn')
+    document.documentElement.classList.remove('splashing') // the screen behind arrives as the halves part
     setTimeout(() => splash.remove(), 600)
   }, Math.max(0, 1600 - performance.now()))
 }

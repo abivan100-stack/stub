@@ -66,5 +66,16 @@
     letter-spacing: 0.12em;
     text-transform: uppercase;
     transform: rotate(-4deg);
+    animation: void 300ms cubic-bezier(0.2, 0, 0, 1) 200ms backwards;
+  }
+  @keyframes void {
+    from {
+      opacity: 0;
+      transform: scale(1.8) rotate(-12deg);
+    }
+    70% {
+      opacity: 1;
+      transform: scale(0.95) rotate(-3deg);
+    }
   }
 </style>

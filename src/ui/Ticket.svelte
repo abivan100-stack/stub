@@ -91,6 +91,17 @@
     background: var(--slip);
     border: var(--line) solid var(--rule);
     border-radius: var(--radius);
+    animation: issue 420ms cubic-bezier(0.2, 0, 0, 1) backwards;
+  }
+  /* A new ticket prints in from the top. */
+  @keyframes issue {
+    from {
+      clip-path: inset(0 0 100% 0);
+      transform: translateY(-6px);
+    }
+    to {
+      clip-path: inset(0 0 -20px 0); /* room for the notch edges and the button shadow */
+    }
   }
   .main {
     position: relative;
