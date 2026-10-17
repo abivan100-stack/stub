@@ -60,7 +60,7 @@ Before making a code, Stub asks for the camera. Without camera permission, brows
 | Make a hotspot | A local-only hotspot, with a Wi-Fi Direct network as the fallback. Windows won't join Wi-Fi Direct networks (Android names them `DIRECT-...`), so the hotspot comes first. **Can't see this Wi-Fi? Switch to 2.4 GHz** swaps in Wi-Fi Direct pinned to 2.4 GHz, for phones that can't see a 5 or 6 GHz hotspot. **Laptop says it can't connect? Switch to a regular hotspot** swaps back. The service keeps the network up while you're in Settings. | [`StubWifiPlugin.java`](android/app/src/main/java/com/abivan/stub/StubWifiPlugin.java) |
 | Join from a Wi-Fi QR | Android 10+ joins automatically after one system prompt. Older versions, and the website, show the name and password. | same |
 | NFC tap-to-pair | The sending phone poses as an NFC tag holding its code (plus Wi-Fi details); the receiver reads it. The reply goes back by QR. | [`StubTagService.java`](android/app/src/main/java/com/abivan/stub/StubTagService.java), [`StubNfcPlugin.java`](android/app/src/main/java/com/abivan/stub/StubNfcPlugin.java) |
-| Connect another device | A small server on port 8080 serves Stub, checks a 4-digit PIN, and relays the transfer over WebSocket, so it works on any network the phone is on, including its own hotspot. Five wrong PINs lock it, one device only, and it stops taking new devices once paired. The connect QR and the 7-character code both carry address, port and PIN; the PIN travels in the URL `#fragment`, which never leaves the browser. | [`StubHostServer.java`](android/app/src/main/java/com/abivan/stub/StubHostServer.java), [`relay.ts`](src/pairing/relay.ts), [`directcode.ts`](src/pairing/directcode.ts) |
+| Connect another device | A small server on port 8080 serves Stub, checks a 4-digit PIN, and relays the transfer over WebSocket, so it works on any network the phone is on, including its own hotspot. Five wrong PINs lock it, one device only, and it stops taking new devices once paired. The phone moves to the 6-digit check only once the other device's WebSocket is open, so a half-made connection never shows a code on one side only. The address in the codes is only ever the phone's Wi-Fi, hotspot or USB address (an allowlist of interface names), never mobile data. The connect QR and the 7-character code both carry address, port and PIN; the PIN travels in the URL `#fragment`, which never leaves the browser. | [`StubHostServer.java`](android/app/src/main/java/com/abivan/stub/StubHostServer.java), [`relay.ts`](src/pairing/relay.ts), [`directcode.ts`](src/pairing/directcode.ts) |
 | Readable QR | Full brightness and no screen timeout while a code is showing. | [`StubScreenPlugin.java`](android/app/src/main/java/com/abivan/stub/StubScreenPlugin.java) |
 
 Permissions are asked when first needed:
@@ -85,6 +85,8 @@ cd android && ./gradlew assembleDebug
 ```
 
 The APK lands in `android/app/build/outputs/apk/debug/app-debug.apk`. Copy it to the phone and open it, or run `adb install -r <apk>`.
+
+A newer APK installs over the old one as an update (app and permissions kept) as long as it's signed with the same key. Debug builds use the debug key of the PC that built them, so build updates on the same PC, or switch to a release key.
 
 For a release build, create a signing key and keep it out of git. `*.jks`, `*.keystore` and `keystore.properties` are already ignored. [docs/android-app-options.md](docs/android-app-options.md#signing-keys) covers keys, Play App Signing and Google's developer verification.
 
@@ -160,7 +162,7 @@ Before the first e2e run, install the browser with `npx playwright install chrom
 
 1. Open the website (or install the APK) on both devices while online. The home screen shows **Works offline** once the website is cached.
 2. On the hotspot phone, turn mobile data **off**.
-3. Pair each way: same Wi-Fi, **Make a hotspot**, **Connect a laptop** with the short code, and NFC.
+3. Pair each way: same Wi-Fi, **Make a hotspot**, **Connect another device** with the short code, and NFC.
 4. Send something over 1 GB with the screen off. Cancel one file mid-way, retry it, and send a file back the other way.
 
 ## Deploy
@@ -171,7 +173,8 @@ The website updates on every push, but an installed APK doesn't. Keep both on th
 
 ## Known limits
 
-- **Not yet tested on real phones:** the Android features above are covered by builds, lint and JVM tests, but the phone relay over a hotspot, NFC tags and Wi-Fi Direct haven't run on hardware yet. Pairing on a shared Wi-Fi has.
+- **Tested on real devices:** QR pairing on a shared Wi-Fi, and phone + laptop through **Connect another device** on a shared Wi-Fi and on the phone's own regular hotspot. **Not yet:** Stub's **Make a hotspot** (local-only hotspot), NFC tags and Wi-Fi Direct. The laptop end of the relay was also checked against the real server code in desktop Chrome.
+- **Windows can't join Wi-Fi Direct networks** (`DIRECT-...`). That's why **Make a hotspot** starts a regular local-only hotspot; use the 2.4 GHz switch only for a phone that can't see it.
 - **When a phone is the hotspot, pair with Connect another device.** The QR scan pairing (Send/Receive) uses WebRTC, which doesn't work from the phone that runs the hotspot.
 - **Browsers keep received files in memory** except Chromium's folder streaming. iOS Safari can kill the tab above a few hundred MB.
 - **Guest and public Wi-Fi** often keep devices apart. Use **Make a hotspot**, or a phone or home hotspot.
