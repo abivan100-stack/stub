@@ -7,7 +7,7 @@
     shareByNfc,
     startHosting,
     startHotspot,
-    startHotspot24,
+    switchHotspot,
     stopWifi,
     toWifiQr,
     wifiCapabilities,
@@ -82,25 +82,11 @@
     return () => shareByNfc([])
   })
 
-  async function makeHotspot() {
+  async function makeHotspot(start = startHotspot) {
     startingHotspot = true
     hotspotProblem = null
     try {
-      hotspot = await startHotspot()
-      addresses = await hostAddresses()
-    } catch (e) {
-      hotspotProblem = e instanceof Error ? e.message : String(e)
-    } finally {
-      startingHotspot = false
-    }
-  }
-
-  /** Some laptops and older phones can't see 5/6 GHz: swap to a 2.4 GHz Wi-Fi Direct network. */
-  async function switch24() {
-    startingHotspot = true
-    hotspotProblem = null
-    try {
-      hotspot = await startHotspot24()
+      hotspot = await start()
       addresses = await hostAddresses()
     } catch (e) {
       hotspotProblem = e instanceof Error ? e.message : String(e)
@@ -137,8 +123,12 @@
             <dd>{hotspot.band}</dd>
           {/if}
         </dl>
-        {#if !hotspot.ssid.startsWith('DIRECT-')}
-          <button class="link" disabled={startingHotspot} onclick={switch24}>
+        {#if hotspot.ssid.startsWith('DIRECT-')}
+          <button class="link" disabled={startingHotspot} onclick={() => makeHotspot(() => switchHotspot(false))}>
+            {startingHotspot ? 'Switching' : 'Laptop says it can’t connect? Switch to a regular hotspot'}
+          </button>
+        {:else}
+          <button class="link" disabled={startingHotspot} onclick={() => makeHotspot(() => switchHotspot(true))}>
             {startingHotspot ? 'Switching' : 'Can’t see this Wi-Fi on the other device? Switch to 2.4 GHz'}
           </button>
         {/if}
@@ -177,7 +167,7 @@
 
     {#if canHotspot && !hotspot && !startingHotspot}
       <div class="alt">
-        <button class="link" onclick={makeHotspot}>Not on the same Wi-Fi? Make a hotspot</button>
+        <button class="link" onclick={() => makeHotspot()}>Not on the same Wi-Fi? Make a hotspot</button>
         {#if hotspotProblem}<p class="problem" role="alert">{hotspotProblem}</p>{/if}
       </div>
     {/if}

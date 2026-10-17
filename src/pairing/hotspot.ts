@@ -21,31 +21,33 @@ export async function wifiCapabilities(): Promise<{ hotspot: boolean; join: bool
 
 /**
  * Makes a network the other device can join, with no internet and mobile data untouched.
- * Android 10+: a Wi-Fi Direct group pinned to 2.4 GHz first, because phones may put a local-only
- * hotspot on 5 or 6 GHz (apps can't choose or even read that band) and many laptops can't see those.
- * Android 8 and 9: the local-only hotspot first. Either way the other kind is the fallback, and if
- * both fail the first error is the one shown.
+ * A local-only hotspot first: it has an ordinary name, and Windows refuses to join networks named
+ * "DIRECT-..." (which Android forces on every Wi-Fi Direct group). If it fails, a Wi-Fi Direct group.
+ * If both fail the first error is the one shown.
  */
 export async function startHotspot(): Promise<WifiCredentials> {
-  const { join: android10 } = await wifi.capabilities()
-  const [first, second] = android10
-    ? [() => wifi.startDirectGroup(), () => wifi.startHotspot()]
-    : [() => wifi.startHotspot(), () => wifi.startDirectGroup()]
   try {
-    return await first()
+    return await wifi.startHotspot()
   } catch (firstError) {
     try {
-      return await second()
+      return await wifi.startDirectGroup()
     } catch {
       throw firstError
     }
   }
 }
 
-/** "Can't see this Wi-Fi?": swap whatever is running for a 2.4 GHz Wi-Fi Direct group. */
-export async function startHotspot24(): Promise<WifiCredentials> {
-  await wifi.stopHotspot().catch(() => {})
-  return wifi.startDirectGroup()
+/**
+ * Swap the running network for the other kind. To Wi-Fi Direct (pinned to 2.4 GHz) when a phone
+ * can't see a hotspot on 5 or 6 GHz; to a local-only hotspot when a laptop can't join "DIRECT-...".
+ */
+export async function switchHotspot(toDirect: boolean): Promise<WifiCredentials> {
+  if (toDirect) {
+    await wifi.stopHotspot().catch(() => {})
+    return wifi.startDirectGroup()
+  }
+  await wifi.stopDirectGroup().catch(() => {})
+  return wifi.startHotspot()
 }
 
 export const joinWifi = (w: WifiCredentials): Promise<{ ssid: string }> => wifi.joinWifi(w)
