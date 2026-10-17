@@ -66,8 +66,10 @@
   color-scheme: light;
 }
 
+/* Dark: follows the device unless the theme switch (Home) picks one. data-theme is set before
+   first paint by the inline script in index.html. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --page: #191a18;
     --slip: #232421;
     --ink: #e9e5db;
@@ -80,6 +82,19 @@
     --danger: #ff8a7a;
     color-scheme: dark;
   }
+}
+:root[data-theme='dark'] {
+  --page: #191a18;
+  --slip: #232421;
+  --ink: #e9e5db;
+  --ink-2: #a8a499;
+  --rule: #e9e5db;
+  --rule-soft: #4a4a45;
+  --signal: #ff6a2b;
+  --on-signal: #191a18;
+  --stamp: #ff8a50;
+  --danger: #ff8a7a;
+  color-scheme: dark;
 }
 
 *,
@@ -277,6 +292,24 @@ input[type='text'] {
   font: var(--t-xs) / 1.4 var(--mono);
   word-break: break-all;
   resize: vertical;
+}
+
+/* Theme switch: the new colours grow as a circle from the switch (theme.ts sets --vt-x, --vt-y). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-new(root) {
+  animation: theme-reveal 560ms cubic-bezier(0.3, 0, 0, 1);
+}
+@keyframes theme-reveal {
+  from {
+    clip-path: circle(0 at var(--vt-x, 50%) var(--vt-y, 0));
+  }
+  to {
+    clip-path: circle(150vmax at var(--vt-x, 50%) var(--vt-y, 0));
+  }
 }
 
 /* Each screen is a new <main>: it slides up a little as it arrives. */

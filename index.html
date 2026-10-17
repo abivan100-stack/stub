@@ -9,6 +9,19 @@
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <title>Stub</title>
+    <script>
+      // The theme picked on Home (src/ui/theme.ts), applied before first paint so dark never flashes light.
+      try {
+        var t = localStorage.getItem('stub-theme')
+        if (t === 'light' || t === 'dark') {
+          document.documentElement.dataset.theme = t
+          document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) {
+            m.content = t === 'dark' ? '#191a18' : '#e6e3da'
+            m.removeAttribute('media')
+          })
+        }
+      } catch (e) {}
+    </script>
     <!-- The loading ticket. Inline, so it shows before any script or stylesheet arrives. -->
     <style>
       #splash {

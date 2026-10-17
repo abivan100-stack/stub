@@ -1,6 +1,7 @@
 <script lang="ts">
   import { decodeDirect, directUrl } from '../pairing'
   import { bytes, plural } from './format'
+  import { THEMES, savedTheme, setTheme, type Theme } from './theme'
 
   let {
     onsend,
@@ -22,6 +23,15 @@
     codeEntry?: boolean
   } = $props()
 
+  let theme = $state<Theme>(savedTheme())
+  const themeLabel: Record<Theme, string> = { auto: 'Auto', light: 'Light', dark: 'Dark' }
+
+  function nextTheme(e: MouseEvent) {
+    theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length]!
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    setTheme(theme, r.left + r.width / 2, r.top + r.height / 2)
+  }
+
   let code = $state('')
   let codeProblem = $state<string | null>(null)
 
@@ -40,7 +50,23 @@
 <main class="home">
   <header class="top">
     <span class="mark">Stub</span>
-    <span class="ready mono" class:on={offlineReady}>{offlineReady ? 'Works offline' : 'Saving for offline use'}</span>
+    <div class="tools">
+      <span class="ready mono" class:on={offlineReady}><span class="words">{offlineReady ? 'Works offline' : 'Saving for offline use'}</span></span>
+      <button class="theme mono" onclick={nextTheme} aria-label="Theme: {themeLabel[theme]}. Tap to change.">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          {#if theme === 'light'}
+            <circle cx="8" cy="8" r="3.2" />
+            <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6 13 13M3 13l1.4-1.4M11.6 4.4 13 3" />
+          {:else if theme === 'dark'}
+            <path d="M13.5 9.6A5.7 5.7 0 0 1 6.4 2.5a5.7 5.7 0 1 0 7.1 7.1Z" />
+          {:else}
+            <circle cx="8" cy="8" r="6" />
+            <path class="fill" d="M8 2a6 6 0 0 1 0 12Z" />
+          {/if}
+        </svg>
+        {themeLabel[theme]}
+      </button>
+    </div>
   </header>
 
   <section class="intro">
@@ -112,6 +138,7 @@
     min-height: 100dvh;
     display: grid;
     grid-template-areas: 'top' 'intro' 'pass' 'steps';
+    grid-template-columns: minmax(0, 1fr); /* no child can stretch the page past a narrow phone */
     grid-template-rows: auto auto minmax(19rem, 1fr) auto;
     gap: var(--s5);
     max-width: 72rem;
@@ -122,13 +149,51 @@
   .top {
     grid-area: top;
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
+    gap: var(--s3);
     padding-top: var(--s4);
   }
   .mark {
     font: 800 var(--t-xl) / 1 var(--display);
     font-stretch: 62%;
+  }
+  .tools {
+    display: flex;
+    align-items: center;
+    gap: var(--s4);
+  }
+  .theme {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s2);
+    min-height: 36px;
+    padding: 0 var(--s3);
+    border: var(--line) solid var(--rule);
+    border-radius: 999px;
+    background: var(--slip);
+    color: var(--ink);
+    font-size: var(--t-xs);
+    cursor: pointer;
+  }
+  .theme svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    transition: transform 420ms cubic-bezier(0.3, 0, 0, 1);
+  }
+  .theme svg .fill {
+    fill: currentColor;
+    stroke: none;
+  }
+  .theme:hover svg,
+  .theme:focus-visible svg {
+    transform: rotate(-25deg);
+  }
+  .theme:active {
+    transform: translateY(1px);
   }
   .ready {
     display: inline-flex;
@@ -143,6 +208,17 @@
     height: 8px;
     border: var(--line) solid var(--ink-2);
     border-radius: 50%;
+  }
+  /* Narrow phones: the dot alone, so the header stays one line; the words stay for screen readers. */
+  @media (max-width: 26rem) {
+    .ready .words {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
   }
   .ready.on::before {
     background: var(--ink-2);
@@ -254,10 +330,12 @@
   .more {
     grid-area: steps;
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--s4);
   }
   .phonecode {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--s2);
     font-size: var(--t-sm);
   }

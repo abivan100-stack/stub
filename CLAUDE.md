@@ -32,6 +32,11 @@ Open questions / ideas not started:
 
 ## Recent changes (newest first)
 
+- Theme switch on Home: Auto / Light / Dark.
+  - The choice is saved in `localStorage` as `stub-theme` and applied before first paint by the inline script in `index.html`.
+  - It switches with a circular View Transition reveal (`src/ui/theme.ts`).
+  - CSS: dark tokens under `:root:not([data-theme='light'])` (media query) and `:root[data-theme='dark']`.
+  - Also fixed a 3 px page overflow at 360 px (the Home grids now use `minmax(0, 1fr)`).
 - Loading screen: a ticket prints (wordmark + 10-step gauge), then tears away. It's about 2 s, inline in `index.html` (`#splash`), and `main.ts` tears it at 1.6 s.
 - Front-end polish:
   - The file queue no longer widens the page on phones (the stamp sits inside the ticket's top section).
