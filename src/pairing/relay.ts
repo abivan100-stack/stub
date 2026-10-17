@@ -70,7 +70,7 @@ function open(url: string): Promise<WebSocket> {
       clearTimeout(timer)
       reject(new Error('Couldn’t reach the phone. Make sure this device is on the phone’s Wi-Fi.'))
     }
-    const timer = setTimeout(() => (ws.close(), fail()), 15_000)
+    const timer = setTimeout(() => (ws.close(), fail()), 8_000)
     ws.addEventListener('open', () => (clearTimeout(timer), resolve(ws)), { once: true })
     ws.addEventListener('error', fail, { once: true })
   })
@@ -78,6 +78,20 @@ function open(url: string): Promise<WebSocket> {
 
 /** Joins the phone's relay and returns the same Link shape a WebRTC pairing gives. */
 export async function relayLink(wsBase: string, role: 'phone' | 'guest', token: string): Promise<Link> {
-  const ws = await open(`${wsBase}/__stub/ws?role=${role}&token=${token}`)
+  // The PIN already went through, so the phone is reachable: a failed socket here is usually a
+  // dropped first attempt on a busy Wi-Fi. Try again before giving up (the token stays valid).
+  let ws: WebSocket | undefined
+  for (let attempt = 1; !ws; attempt++) {
+    try {
+      ws = await open(`${wsBase}/__stub/ws?role=${role}&token=${token}`)
+    } catch (e) {
+      if (attempt === 3)
+        throw new Error(
+          'Reached the phone, but couldn’t open the link to it. Try a private (incognito) window: a browser extension or firewall may be blocking it.',
+          { cause: e },
+        )
+      await new Promise((r) => setTimeout(r, 1000))
+    }
+  }
   return { channel: wsChannel(ws), code: await relayCode(token), close: () => ws.close() }
 }

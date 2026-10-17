@@ -83,7 +83,9 @@ public class StubHostPlugin extends Plugin {
             for (NetworkInterface ni : Collections.list(NetworkInterface.getNetworkInterfaces())) {
                 if (!ni.isUp() || ni.isLoopback()) continue;
                 String name = ni.getName();
-                if (name.startsWith("rmnet") || name.startsWith("ccmni") || name.startsWith("dummy") || name.startsWith("tun")) continue;
+                // Allowlist, not a blocklist: mobile data goes by many names (rmnet, ccmni, seth_lte, v4-, r_rmnet...),
+                // and a mobile-data address in the code sends the laptop to a phone it can never reach.
+                if (!name.matches("(wlan|swlan|softap|ap|p2p|eth|rndis|ncm|bt-pan).*")) continue;
                 for (InetAddress a : Collections.list(ni.getInetAddresses())) {
                     if (a instanceof Inet4Address && a.isSiteLocalAddress()) out.put(a.getHostAddress());
                 }
