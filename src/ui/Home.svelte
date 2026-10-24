@@ -139,7 +139,7 @@
     display: grid;
     grid-template-areas: 'top' 'intro' 'pass' 'steps';
     grid-template-columns: minmax(0, 1fr); /* no child can stretch the page past a narrow phone */
-    grid-template-rows: auto auto minmax(19rem, 1fr) auto;
+    grid-template-rows: auto auto minmax(12rem, 1fr) auto;
     gap: var(--s5);
     max-width: 72rem;
     margin: 0 auto;
@@ -237,10 +237,10 @@
     gap: var(--s3);
   }
   h1 {
-    font-size: clamp(2.6rem, 11vw, 5.5rem);
+    font-size: clamp(2.2rem, 10vw, 5.5rem);
     font-stretch: 62%;
     line-height: 0.9;
-    max-width: 9ch;
+    max-width: 18ch;
   }
   .lede {
     max-width: 34ch;
@@ -405,6 +405,22 @@
     flex: none;
     width: 1.5rem;
     color: var(--ink-2);
+  }
+
+  /* Shorter phones: tighter rhythm so the whole Home fits one screen, no scroll. */
+  @media (max-width: 59.99rem) and (max-height: 54rem) {
+    .home {
+      gap: var(--s4);
+    }
+    .pass {
+      margin-bottom: var(--s3);
+    }
+    .half {
+      padding: var(--s4);
+    }
+    .steps li {
+      padding: var(--s2) 0;
+    }
   }
 
   /* Desktop: words on the left, the ticket on the right, all in one screen. */
