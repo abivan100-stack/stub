@@ -133,7 +133,7 @@ A printed ticket: card stock, black ink, one safety-orange signal.
 | `--signal` | `#ff5b14` | `#ff6a2b` | primary action, live progress (ink text on it) |
 | `--stamp` | `#b83a08` | `#ff8a50` | the "Verified" stamp |
 
-- **Type:** Archivo (variable width), set narrow, for headings; DM Mono for sizes, speeds, codes and ticket numbers. Both are self-hosted in `src/assets/fonts` (SIL OFL).
+- **Type:** Fraunces (variable serif) for headings and body; DM Mono for sizes, speeds, codes and ticket numbers. Both are self-hosted in `src/assets/fonts` (SIL OFL).
 - **Shape:** 3 px corners, 1.5 px rules, perforated tear lines with punched notches. No shadows except the hard edge buttons press into.
 - **Motion:**
   - A loading ticket prints its gauge, then tears to reveal the app (about 2 s).
