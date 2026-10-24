@@ -11,7 +11,7 @@
       Back
     </button>
   {:else}
-    <span class="mark">Stub</span>
+    <span class="mark"><img src="/icon.svg" alt="" />Stub</span>
   {/if}
   {#if step}
     <span class="step mono" aria-label="Step {step[0]} of {step[1]}">
@@ -33,9 +33,16 @@
     border-bottom: var(--line) solid var(--rule);
   }
   .mark {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s2);
     font: 800 var(--t-lg) / 1 var(--display);
     font-stretch: 62%;
     letter-spacing: 0.01em;
+  }
+  .mark img {
+    width: 1.5em;
+    height: 1.5em;
   }
   .back {
     display: inline-flex;
