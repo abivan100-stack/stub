@@ -32,6 +32,7 @@ Open questions / ideas not started:
 
 ## Recent changes (newest first)
 
+- Home ticket: the bottom border of the Send/Receive ticket is thicker (3× the rule width, `.pass` in `Home.svelte`).
 - Serif type: Fraunces (variable, self-hosted `fraunces-wght.woff2`, OFL) for headings and body, replacing Archivo. DM Mono stays for codes and numbers. Archivo file removed. Splash wordmark uses Fraunces too.
 - Smooth animations:
   - Staggered section entrance (`main > *` in `app.css`), held by the `.splashing` class until the loading ticket tears.

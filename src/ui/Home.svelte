@@ -257,6 +257,7 @@
     display: grid;
     grid-template-rows: 1fr auto 1fr;
     border: var(--line) solid var(--rule);
+    border-bottom-width: calc(var(--line) * 3);
     border-radius: var(--radius);
     background: var(--slip);
   }
