@@ -256,6 +256,7 @@
     grid-area: pass;
     display: grid;
     grid-template-rows: 1fr auto 1fr;
+    margin-bottom: var(--s4);
     border: var(--line) solid var(--rule);
     border-radius: var(--radius);
     background: var(--slip);
