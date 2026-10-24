@@ -32,6 +32,7 @@ Open questions / ideas not started:
 
 ## Recent changes (newest first)
 
+- Home steps (1-2-3 list): body text uses the system sans stack instead of Fraunces (`.steps li` in `Home.svelte`). No new font file.
 - Favicon: removed the beige background `<rect>` from `public/icon.svg` so the tab icon is transparent. The PNG icons (apple-touch, PWA) keep their background.
 - Home ticket: 16 px gap between the Send/Receive ticket and the bottom of the page (`margin-bottom` on `.pass` in `Home.svelte`).
 - Serif type: Fraunces (variable, self-hosted `fraunces-wght.woff2`, OFL) for headings and body, replacing Archivo. DM Mono stays for codes and numbers. Archivo file removed. Splash wordmark uses Fraunces too.

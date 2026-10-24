@@ -391,6 +391,7 @@
     gap: var(--s3);
     padding: var(--s3) 0;
     border-bottom: 1px solid var(--rule-soft);
+    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     font-size: var(--t-sm);
   }
   .n {
