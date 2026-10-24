@@ -3,10 +3,9 @@
    Structure comes from rules and perforations, never from shadows. */
 
 @font-face {
-  font-family: 'Archivo';
-  src: url('./assets/fonts/archivo-wdth.woff2') format('woff2-variations');
+  font-family: 'Fraunces';
+  src: url('./assets/fonts/fraunces-wght.woff2') format('woff2-variations');
   font-weight: 100 900;
-  font-stretch: 62% 125%;
   font-display: swap;
 }
 @font-face {
@@ -36,8 +35,8 @@
   --qr-light: #f4f2ec;
   --qr-dark: #1b1a17;
 
-  --display: 'Archivo', 'Arial Narrow', sans-serif;
-  --body: 'Archivo', system-ui, sans-serif;
+  --display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+  --body: 'Fraunces', 'Iowan Old Style', Georgia, serif;
   --mono: 'DM Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 
   /* Type scale: 1.25 ratio from a 17px body */
