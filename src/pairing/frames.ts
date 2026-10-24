@@ -1,7 +1,7 @@
 // Splits a long payload across several QR codes shown in a loop: "2/3:<slice>".
 // A payload that fits in one code goes out as is, with no header.
 
-export const FRAME_SIZE = 320
+const FRAME_SIZE = 320
 const FRAME = /^(\d+)\/(\d+):(.*)$/s
 
 export function toFrames(payload: string, size = FRAME_SIZE): string[] {

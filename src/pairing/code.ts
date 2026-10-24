@@ -3,7 +3,7 @@ import { sha256 } from '../sha256'
 // A 6-digit code both screens can compare. It is derived from both DTLS fingerprints,
 // so a third device sitting in the middle would produce a different number on each side.
 
-export function fingerprintOf(sdp: string): string {
+function fingerprintOf(sdp: string): string {
   const m = /^a=fingerprint:(.+)$/m.exec(sdp)
   if (!m?.[1]) throw new Error('No fingerprint in description')
   return m[1].trim().toLowerCase()

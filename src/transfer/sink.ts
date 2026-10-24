@@ -1,7 +1,7 @@
 // Where received bytes go: straight to a folder on disk (Chromium), into memory as a Blob,
 // or, in the Android app, into Download/Stub (see native.ts).
 
-export interface SinkResult {
+interface SinkResult {
   blob?: Blob
   savedTo?: string
   /** content:// URI of the saved file in the Android app, for opening it in another app. */
@@ -14,7 +14,7 @@ export interface Sink {
   abort(): Promise<void>
 }
 
-export interface FileMeta {
+interface FileMeta {
   name: string
   type: string
   size: number

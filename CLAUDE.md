@@ -32,6 +32,7 @@ Open questions / ideas not started:
 
 ## Recent changes (newest first)
 
+- Ponytail audit cleanup: removed the unused `workbox-window` dependency, and dropped `export` from symbols only used inside their own file (`FRAME_SIZE`, `fingerprintOf`, `unpack`, `toBase64Url`, `SinkResult`, `FileMeta`).
 - Home fits one screen on phones (390x844, 412x915) and tablets with no scroll: headline clamp min 2.2rem, pass min row 12rem, and tighter spacing under 54rem tall (`Home.svelte`). Very small phones (360x640) still scroll, since their content is taller than the screen.
 - Header logo: the ticket icon (`/icon.svg`) sits beside the "Stub" wordmark in the Home and Bar headers (`.mark` in `Home.svelte` and `Bar.svelte`).
 - Home steps (1-2-3 list): body text uses the system sans stack instead of Fraunces (`.steps li` in `Home.svelte`). No new font file.
