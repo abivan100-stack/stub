@@ -143,7 +143,7 @@
     gap: var(--s5);
     max-width: 72rem;
     margin: 0 auto;
-    padding: env(safe-area-inset-top) var(--s4) calc(var(--s6) + env(safe-area-inset-bottom));
+    padding: env(safe-area-inset-top) var(--s4) calc(var(--s4) + env(safe-area-inset-bottom));
   }
 
   .top {
@@ -389,7 +389,7 @@
   }
   .steps {
     list-style: none;
-    margin: 0;
+    margin: var(--s2) 0 0;
     padding: 0;
     border-top: var(--line) solid var(--rule);
   }
