@@ -49,7 +49,7 @@
 
 <main class="home">
   <header class="top">
-    <span class="mark">Stub</span>
+    <span class="mark"><img src="/icon.svg" alt="" />Stub</span>
     <div class="tools">
       <span class="ready mono" class:on={offlineReady}><span class="words">{offlineReady ? 'Works offline' : 'Saving for offline use'}</span></span>
       <button class="theme mono" onclick={nextTheme} aria-label="Theme: {themeLabel[theme]}. Tap to change.">
@@ -155,8 +155,15 @@
     padding-top: var(--s4);
   }
   .mark {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s2);
     font: 800 var(--t-xl) / 1 var(--display);
     font-stretch: 62%;
+  }
+  .mark img {
+    width: 1.5em;
+    height: 1.5em;
   }
   .tools {
     display: flex;
