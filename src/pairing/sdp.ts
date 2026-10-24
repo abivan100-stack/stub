@@ -123,7 +123,7 @@ export function pack(f: Fields): Uint8Array {
   return Uint8Array.from(out)
 }
 
-export function unpack(b: Uint8Array): Fields {
+function unpack(b: Uint8Array): Fields {
   let i = 0
   const take = (n: number) => {
     if (i + n > b.length) throw new Error('Truncated')
@@ -150,7 +150,7 @@ export function unpack(b: Uint8Array): Fields {
 
 // --- text ----------------------------------------------------------------------
 
-export function toBase64Url(bytes: Uint8Array): string {
+function toBase64Url(bytes: Uint8Array): string {
   let bin = ''
   for (const b of bytes) bin += String.fromCharCode(b)
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')

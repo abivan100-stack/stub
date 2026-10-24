@@ -32,6 +32,7 @@ Open questions / ideas not started:
 
 ## Recent changes (newest first)
 
+- Ponytail audit cleanup: removed the unused `workbox-window` dependency, and dropped `export` from symbols only used inside their own file (`FRAME_SIZE`, `fingerprintOf`, `unpack`, `toBase64Url`, `SinkResult`, `FileMeta`).
 - Header logo: the ticket icon (`/icon.svg`) sits beside the "Stub" wordmark in the Home and Bar headers (`.mark` in `Home.svelte` and `Bar.svelte`).
 - Home steps (1-2-3 list): body text uses the system sans stack instead of Fraunces (`.steps li` in `Home.svelte`). No new font file.
 - Favicon: removed the beige background `<rect>` from `public/icon.svg` so the tab icon is transparent. The PNG icons (apple-touch, PWA) keep their background.
